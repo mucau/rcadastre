@@ -12,7 +12,7 @@ Must be one of \code{"pci"} or \code{"etalab"}.}
 
 \item{commune}{\code{character} vector. The INSEE code(s) of the commune(s).}
 
-\item{millesime}{\code{character}. The version or millesime of the dataset.
+\item{millesime}{\code{character}. The version of the dataset.
 Must be on of \code{get_data_millesimes("pci")}. Default is \code{"latest"}.}
 
 \item{format}{\code{character}. Optional. The format of the data.
@@ -20,11 +20,11 @@ For "pci", must be \code{"edigeo"} or \code{"dxf"}.
 For "etalab", the default is "geojson".}
 }
 \value{
-A character vector of full URLs for the requested site, commune(s), and millesime.
+A character vector of full URLs for the requested site, commune(s), and cadastral version.
 }
 \description{
-This function builds the complete URL to access cadastre data for a
-given cadastre.data.gouv site, commune, and millesime.
+This function builds the complete URL to access cadastral data for a
+given cadastre.data.gouv site, commune, and cadastral version.
 The function handles default formats and scales for each site.
 }
 \details{

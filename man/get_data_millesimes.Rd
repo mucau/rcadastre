@@ -2,7 +2,7 @@
 % Please edit documentation in R/cdg.R
 \name{get_data_millesimes}
 \alias{get_data_millesimes}
-\title{Detect available years (millesimes)}
+\title{Detect available cadastral version}
 \usage{
 get_data_millesimes(site)
 }
@@ -11,15 +11,15 @@ get_data_millesimes(site)
 Must be one of \code{"pci"} or \code{"etalab"}.}
 }
 \value{
-A \code{character} vector of unique year identifiers (millesimes) found on the site.
+A \code{character} vector of unique cadastral version found on the site.
 }
 \description{
-Retrieves and returns the list of available "millesimes" (year directories)
+Retrieves and returns the list of available cadastral version directories
 from a specified data site.
 }
 \details{
 The function queries the base data URL for the specified site and extracts
-the list of available millésime directories.
+the list of available cadastral version directories.
 }
 \examples{
 \dontrun{

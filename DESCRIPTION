@@ -1,16 +1,15 @@
 Package: frcadastre
-Title: R Interface to get french cadastre data
+Title: R Interface to get french cadastral data
 Version: 0.0.1.0
 Authors@R: 
     person("Matthieu", "Chevereau", , "matthieu.chevereau@hotmail.com", role = c("aut", "cre"))
 Description: Get spatial vector data from the French cadastre portal (<https://cadastre.data.gouv.fr/>). It distinguishes 
-    between "PCI" (Plan Cadastral Informatisé) data and "Etalab" datasets.
+    between "PCI" (computerized cadastral plan) data and "Etalab" datasets.
 License: GPL (>= 3)
 Encoding: UTF-8
 Roxygen: list(markdown = TRUE)
-RoxygenNote: 7.3.2
+RoxygenNote: 7.3.3
 Imports:
-    R.utils,
     archive,
     httr2,
     sf,

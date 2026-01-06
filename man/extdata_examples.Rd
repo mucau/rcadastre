@@ -3,7 +3,7 @@
 \docType{data}
 \name{extdata_examples}
 \alias{extdata_examples}
-\title{Example PCI / DXF / EDIGEO / GeoJSON files for testing}
+\title{Example DXF / EDIGEO / GeoJSON files for testing}
 \description{
 These files are used internally for testing functions like \code{read_dxf()},
 \code{read_edigeo()}, and \code{read_geojson_file()}.

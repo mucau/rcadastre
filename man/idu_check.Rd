@@ -2,51 +2,48 @@
 % Please edit documentation in R/idu.R
 \name{idu_check}
 \alias{idu_check}
-\title{Check if a vector contains valid IDUs}
+\title{Check if a vector contains valid cadastral parcel identifiers (IDUs)}
 \usage{
-idu_check(x, error = FALSE)
+idu_check(x, verbose = FALSE)
 }
 \arguments{
 \item{x}{A \code{character} vector containing IDU codes to validate.}
 
-\item{error}{\code{logical} (default = \code{FALSE}).
-If \code{TRUE}, the function stops when invalid IDUs are detected.
-If \code{FALSE}, it returns a logical vector with a warning listing invalid IDUs.}
+\item{verbose}{\code{logical} (default = \code{FALSE}). If \code{TRUE}, a warning is issued
+listing invalid IDUs. If \code{FALSE}, the function runs silently.}
 }
 \value{
-A logical vector indicating which elements of \code{x} are valid IDUs.
-When \code{error = TRUE}, the function stops on invalid entries.
+A logical vector of the same length as \code{x}, where \code{TRUE} indicates
+a valid IDU and \code{FALSE} an invalid one.
+If \code{verbose = TRUE}, a warning lists the invalid IDUs.
 }
 \description{
-This function checks whether a character vector contains valid INSEE
-cadastral parcel identifiers (IDUs). It can either return a logical
-vector indicating validity or raise an error if invalid entries are found.
+This function checks whether a character vector contains valid French cadastral
+parcel identifiers (IDUs). It returns a logical vector indicating validity for
+each element. Optionally, a warning can be issued listing invalid entries.
 }
 \details{
-A valid IDU (INSEE cadastral identifier) must satisfy all of the following:
+A valid IDU must satisfy all of the following:
 \itemize{
-\item Be a non-missing, non-empty string of length 14.
-\item The first two characters: department code — digits (0–9) or letters 'A'/'B'.
-\item The next three characters: commune code — digits (0–9).
-\item The next three characters: prefix — digits (0–9).
-\item The next two characters: section — digits (0–9) or uppercase letters (A–Z).
-\item The last four characters: parcel number — digits (0–9).
-\item Contain no lowercase letters or special characters.
+\item Non-missing, non-empty string of length 14.
+\item First two characters: department code — digits (0–9) or letters 'A'/'B'.
+\item Next three characters: commune code — digits (0–9).
+\item Next three characters: prefix — digits (0–9).
+\item Next two characters: section — digits (0–9) or uppercase letters (A–Z).
+\item Last four characters: parcel number — digits (0–9).
+\item No lowercase letters or special characters.
 }
 }
 \examples{
 \dontrun{
-# Valid IDU
+# Single valid IDU
 idu_check("01001000AA0123")
 
-# Multiple values
-idu_check(c("01001000AA0123", "AB12300000A0123"))
+# Multiple values, with some invalid
+idu_check(c("01001000AA0123", "12345", NA, ""), verbose = TRUE)
 
-# Strict check (default): stops if invalid IDUs are found
-idu_check(c("01001000AA0123", "12345"))
-
-# Non-strict check: returns logical vector and warns
-idu_check(c("01001000AA0123", "12345"), error = FALSE)
+# Empty input
+idu_check(character(0), verbose = TRUE)
 }
 
 }

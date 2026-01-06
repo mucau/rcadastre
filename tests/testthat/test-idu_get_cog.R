@@ -34,8 +34,6 @@ test_that("idu_get_cog returns only commune names when loc='com'", {
 })
 
 test_that("idu_get_cog stops for invalid IDUs", {
-  expect_error(
-    idu_get_cog(c("invalidIDU")),
-    "Invalid IDU"
-  )
+  err <- expect_error(idu_get_cog(c("invalidIDU")))
+  expect_match(err$message, "invalidIDU")
 })

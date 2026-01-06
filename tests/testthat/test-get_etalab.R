@@ -1,66 +1,55 @@
-test_that("get_etalab() works offline with mocked dependencies", {
-  fake_arg_pairs <- data.frame(
-    commune = "72187",
-    layer = "parcelles",
-    stringsAsFactors = FALSE
-  )
+# MOCKED TEST ----
+test_that("get_etalab works offline with mocked dependencies - single layer", {
+
+  fake_proc <- sf::st_sf(id = integer(0), geometry = sf::st_sfc())
+  fake_raw  <- sf::st_sf(id = integer(0), geometry = sf::st_sfc())
 
   with_mocked_bindings(
-    check_etalab_data = function(data, type) TRUE,
-    get_etalab_arg_pairs = function(id, data, verbose = TRUE) fake_arg_pairs,
-    insee_check = function(communes, scale_as_return = TRUE, verbose = TRUE) "communes",
-    read_geojson = function(u, type = "url") {
-      sf::st_sf(id = integer(0), geometry = sf::st_sfc())
-    },
+    `get_etalab_layernames` = function(type) list(proc = "proc_layer", raw = "raw_layer"),
+    `get_etalab_proc`       = function(commune, layer, verbose = TRUE) fake_proc,
+    `get_etalab_raw`        = function(commune, layer, millesime = "latest", extract_dir = NULL, verbose = TRUE) fake_raw,
     {
-      res <- get_etalab("72187", "parcelles", verbose = FALSE)
-      expect_s3_class(res, "sf")
-      expect_named(res, c("id", "geometry"))
+      # Processed layer
+      res1 <- get_etalab("72187", "proc_layer", verbose = FALSE)
+      expect_s3_class(res1, "sf")
+
+      # Raw layer
+      res2 <- get_etalab("72187", "raw_layer", verbose = FALSE)
+      expect_s3_class(res2, "sf")
     }
   )
 })
 
-test_that("get_etalab() returns empty list if read_geojson fails", {
-  fake_arg_pairs <- data.frame(
-    commune = "72187",
-    layer = "parcelles",
-    stringsAsFactors = FALSE
-  )
-
+test_that("get_etalab throws error for invalid layer", {
   with_mocked_bindings(
-    check_etalab_data = function(data, type) TRUE,
-    get_etalab_arg_pairs = function(id, data, verbose = TRUE) fake_arg_pairs,
-    insee_check = function(communes, scale_as_return = TRUE, verbose = TRUE) "communes",
-    read_geojson = function(u, type = "url") NULL,
+    `get_etalab_layernames` = function(type) list(proc = c("proc_layer"), raw = c("raw_layer")),
     {
-      res <- get_etalab("72187", "parcelles", verbose = FALSE)
-      expect_true(is.list(res))
-      expect_equal(length(res), 0) # aucun sf valide récupéré
+      expect_error(
+        get_etalab("72187", "invalid_layer"),
+        "Invalid layer"
+      )
     }
   )
 })
 
-test_that("get_etalab() works online with httptest2 mocks", {
-  skip_if_not_installed("httptest2")
+# ONLINE TEST ----
+test_that("get_etalab works online for real Etalab layers", {
+  skip_on_cran()
+  skip_on_ci()
+  skip_if_offline()
 
-  httptest2::with_mock_dir("get_etalab", {
-    # Single layer for a single commune
-    parcelles <- get_etalab("72187", "parcelles", verbose = FALSE)
-    expect_true(inherits(parcelles, "sf") || is.list(parcelles))
+  # Test processed layer
+  proc_layer <- "numvoie"  # exemple d’un layer processé disponible
+  res_proc <- get_etalab("72187", proc_layer, verbose = FALSE)
+  expect_true(inherits(res_proc, "sf"))
 
-    # Multiple layers for a single commune
-    layers <- get_etalab("72187", c("parcelles", "sections"), verbose = FALSE)
-    expect_true(is.list(layers))
-    expect_true(all(sapply(layers, inherits, "sf")))
+  # Test raw layer
+  raw_layer <- "parcelles"
+  res_raw <- get_etalab("72187", raw_layer, verbose = FALSE)
+  expect_true(inherits(res_raw, "sf"))
 
-    # Multiple communes with the same layer
-    same_multi <- get_etalab(c("72187", "72181"), "parcelles", verbose = FALSE)
-    # In this case, the result is a single sf object with combined rows
-    expect_true(inherits(same_multi, "sf"))
-
-    # Multiple communes with different layers
-    notsame_multi <- get_etalab(c("72187", "72181"), list("parcelles", "communes"), verbose = FALSE)
-    expect_true(is.list(notsame_multi))
-    expect_true(all(sapply(notsame_multi, inherits, "sf")))
-  })
+  # Test multiple layers
+  layers <- list(raw_layer, proc_layer)
+  res_list <- lapply(layers, function(l) get_etalab("72187", l, verbose = FALSE))
+  expect_true(all(sapply(res_list, inherits, "sf")))
 })

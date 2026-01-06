@@ -22,7 +22,7 @@ A \code{data.frame} with one row per IDU and columns:
 }
 }
 \description{
-Splits a French cadastral parcel IDU (Identifiant de parcelle) into its
+Splits a French cadastral parcel IDU (unique parcel identifier) into its
 components: department, commune, prefix, section, and parcel number.
 }
 \details{

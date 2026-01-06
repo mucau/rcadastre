@@ -10,7 +10,7 @@ get_pci_urls(x, millesime = "latest", format = "edigeo")
 \item{x}{\code{character}. Vector of codes to retrieve URLs for.
 Each element must be either a 5-character commune code or a 12-character sheet code.}
 
-\item{millesime}{\code{character}. The version or millesime of the dataset.
+\item{millesime}{\code{character}. The cadastral version of the dataset.
 Must be on of \code{get_data_millesimes("pci")}. Default is \code{"latest"}.}
 
 \item{format}{\code{character}. The format of the data.
@@ -20,7 +20,7 @@ Must be \code{"edigeo"} or \code{"dxf"}. Default is \code{"edigeo"}.}
 A character vector of full URLs pointing to the requested PCI sheets.
 }
 \description{
-This internal function generates PCI (Plan Cadastral Informatise) URLs
+This internal function generates PCI (computerized cadastral plan) URLs
 given a vector of commune codes (5-character) or individual sheet codes
 (12-character).
 }

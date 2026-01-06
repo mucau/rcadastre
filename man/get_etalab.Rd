@@ -2,49 +2,46 @@
 % Please edit documentation in R/etalab.R
 \name{get_etalab}
 \alias{get_etalab}
-\title{Download Etalab processed datasets from "bundle" app}
+\title{Download Etalab layer (raw or processed) for one or multiple communes}
 \usage{
-get_etalab(id, data = "parcelles", verbose = TRUE)
+get_etalab(
+  commune,
+  layer,
+  millesime = "latest",
+  extract_dir = NULL,
+  verbose = TRUE
+)
 }
 \arguments{
-\item{id}{\code{character} or \code{numeric} vector.
-The INSEE code(s) of the commune(s) or department(s).}
+\item{commune}{\code{character} or \code{numeric} vector.
+The INSEE code(s) of the commune(s).}
 
-\item{data}{\code{character} vector or \code{list}.
-If \code{character}, a vector of layers will be paired with all communes (Cartesian product).
-If \code{list}, each element corresponds to a vector of layers for the matching commune.
-Must be dataset names returned by \code{get_etalab_layernames("proc")}.}
+\item{layer}{\code{character}. Datasets raw name to download.
+Must be dataset names returned by \code{\link[=get_etalab_layernames]{get_etalab_layernames()}}.}
+
+\item{millesime}{\code{character}. Dataset version for raw layers.
+Must be on of \code{get_data_millesimes("etalab")}. Default is \code{"latest"}.}
+
+\item{extract_dir}{\code{character} or \code{NULL}.
+Directory where files will be downloaded and extracted.
+If \code{NULL}, a temporary directory is used.}
 
 \item{verbose}{\code{logical}. If \code{TRUE}, prints progress messages.}
 }
 \value{
-An \code{sf} object if a single layer is retrieved, or a named list of \code{sf}
-objects if multiple layers are retrieved.
+An \code{sf} object containing the requested layer, or \code{NULL} if download/read fails
 }
 \description{
-This function downloads one or several dataset layer (e.g., \code{"parcelles"})
-for one or several INSEE identifiers (department or commune) using the Etalab
-"bundle" cadastre.data.gouv.
-The results are returned as an \code{sf} object. If multiple files are retrieved
-(e.g. several communes or layers), they are combined into a single \code{sf}
-objects list.
+This function automatically selects the appropriate download method
+based on whether the requested layer is raw or processed.
 }
 \examples{
 \dontrun{
-# Download parcel geometries for a single commune
-parcelles <- get_etalab("72187", data = "parcelles")
+# Download processed layer
+batiments <- get_etalab("72187", "batiments")
 
-# Download several layers for one commune
-layers <- get_etalab("72187", data = c("parcelles", "sections"))
-
-# Download parcel geometries for multiple communes
-multi <- get_etalab(c("72187", "72032"), data = "parcelles")
-
-# Different layers for each commune
-custom <- get_etalab(id = c("72187", "72181"), data = list(c("parcelles", "sections"), "communes"))
+# Download raw layer
+parcelles <- get_etalab("72187", "parcelle")
 }
 
-}
-\seealso{
-\code{\link[=get_etalab_layernames]{get_etalab_layernames()}}
 }

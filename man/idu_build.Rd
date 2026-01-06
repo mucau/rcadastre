@@ -30,7 +30,7 @@ from department, commune, prefix, section, and parcel number.
 \details{
 \itemize{
 \item All input vectors must have the same length.
-\item The function automatically zero-pads and uppercases fields where required.
+\item The function automatically zero-pads and upper field names where required.
 \item Both \code{dep} and \code{com} are required.
 }
 }
@@ -41,5 +41,5 @@ idu_build(dep = "72", com = "187", prefix = "000", section = "A", numero = "1")
 
 }
 \seealso{
-\code{\link[=insee_check]{insee_check()}}, \code{\link[=idu_check]{idu_check()}}
+\code{\link[=check_insee]{check_insee()}}, \code{\link[=idu_check]{idu_check()}}
 }

@@ -17,10 +17,10 @@
 #'
 #' @details
 #' - All input vectors must have the same length.
-#' - The function automatically zero-pads and uppercases fields where required.
+#' - The function automatically zero-pads and upper field names where required.
 #' - Both `dep` and `com` are required.
 #'
-#' @seealso [insee_check()], [idu_check()]
+#' @seealso [check_insee()], [idu_check()]
 #'
 #' @examples
 #' \dontrun{
@@ -73,12 +73,16 @@ idu_build <- function(dep, com, prefix, section, numero) {
     paste0(pad0(dep, 2, upper = TRUE), pad0(com, 3))
   )
 
-  # Validate INSEE commune codes
-  insee_check(commune, verbose = FALSE)
+  # Commune check
+  commune <- as.character(commune)
+  valid <- check_insee(commune, verbose = TRUE)
+  if (!all(valid)) {
+    stop("Some INSEE codes are invalid or correspond to mother communes.", call. = FALSE)
+  }
 
   # Build and validate IDUs
   idu <- paste0(commune, prefix, section, numero)
-  valid <- idu_check(idu, error = TRUE)
+  valid <- idu_check(idu)
   if (!all(valid)) {
     stop("Invalid IDU(s) generated: ", paste(idu[!valid], collapse = ", "), call. = FALSE)
   }
@@ -88,7 +92,7 @@ idu_build <- function(dep, com, prefix, section, numero) {
 
 #' Split IDUs into their components
 #'
-#' Splits a French cadastral parcel IDU (Identifiant de parcelle) into its
+#' Splits a French cadastral parcel IDU (unique parcel identifier) into its
 #' components: department, commune, prefix, section, and parcel number.
 #'
 #' @param idu `character`
@@ -121,6 +125,11 @@ idu_build <- function(dep, com, prefix, section, numero) {
 #' @export
 #'
 idu_split <- function(idu) {
+  # IDU check
+  valid <- idu_check(idu)
+  if (!all(valid)) {
+    stop("Invalid IDU(s) detected: ", paste(idu[!valid], collapse = ", "), call. = FALSE)
+  }
 
   # Extract first 2 and 3 characters (possible department codes)
   dep2 <- substr(idu, 1, 2)
@@ -140,8 +149,12 @@ idu_split <- function(idu) {
   # Reconstruct full INSEE code
   insee <- paste0(code_dep, code_com)
 
-  # Validate INSEE code
-  insee_check(insee, verbose = FALSE)
+  # Commune check
+  commune <- as.character(insee)
+  valid <- check_insee(commune, verbose = FALSE)
+  if (!all(valid)) {
+    stop("Some INSEE codes are invalid or correspond to mother communes.", call. = FALSE)
+  }
 
   # Return data.frame with all IDU components
   data.frame(
@@ -157,100 +170,99 @@ idu_split <- function(idu) {
 }
 
 ### Check IDU section ----
-#' Check if a vector contains valid IDUs
+#' Check if a vector contains valid cadastral parcel identifiers (IDUs)
 #'
-#' This function checks whether a character vector contains valid INSEE
-#' cadastral parcel identifiers (IDUs). It can either return a logical
-#' vector indicating validity or raise an error if invalid entries are found.
+#' This function checks whether a character vector contains valid French cadastral
+#' parcel identifiers (IDUs). It returns a logical vector indicating validity for
+#' each element. Optionally, a warning can be issued listing invalid entries.
 #'
 #' @param x A `character` vector containing IDU codes to validate.
-#' @param error `logical` (default = `FALSE`).
-#' If `TRUE`, the function stops when invalid IDUs are detected.
-#' If `FALSE`, it returns a logical vector with a warning listing invalid IDUs.
+#' @param verbose `logical` (default = `FALSE`). If `TRUE`, a warning is issued
+#'   listing invalid IDUs. If `FALSE`, the function runs silently.
 #'
 #' @details
-#' A valid IDU (INSEE cadastral identifier) must satisfy all of the following:
+#' A valid IDU must satisfy all of the following:
 #' \itemize{
-#'   \item Be a non-missing, non-empty string of length 14.
-#'   \item The first two characters: department code — digits (0–9) or letters 'A'/'B'.
-#'   \item The next three characters: commune code — digits (0–9).
-#'   \item The next three characters: prefix — digits (0–9).
-#'   \item The next two characters: section — digits (0–9) or uppercase letters (A–Z).
-#'   \item The last four characters: parcel number — digits (0–9).
-#'   \item Contain no lowercase letters or special characters.
+#'   \item Non-missing, non-empty string of length 14.
+#'   \item First two characters: department code — digits (0–9) or letters 'A'/'B'.
+#'   \item Next three characters: commune code — digits (0–9).
+#'   \item Next three characters: prefix — digits (0–9).
+#'   \item Next two characters: section — digits (0–9) or uppercase letters (A–Z).
+#'   \item Last four characters: parcel number — digits (0–9).
+#'   \item No lowercase letters or special characters.
 #' }
 #'
-#' @return
-#' A logical vector indicating which elements of `x` are valid IDUs.
-#' When `error = TRUE`, the function stops on invalid entries.
+#' @return A logical vector of the same length as `x`, where `TRUE` indicates
+#'   a valid IDU and `FALSE` an invalid one.
+#'   If `verbose = TRUE`, a warning lists the invalid IDUs.
 #'
 #' @examples
 #' \dontrun{
-#' # Valid IDU
+#' # Single valid IDU
 #' idu_check("01001000AA0123")
 #'
-#' # Multiple values
-#' idu_check(c("01001000AA0123", "AB12300000A0123"))
+#' # Multiple values, with some invalid
+#' idu_check(c("01001000AA0123", "12345", NA, ""), verbose = TRUE)
 #'
-#' # Strict check (default): stops if invalid IDUs are found
-#' idu_check(c("01001000AA0123", "12345"))
-#'
-#' # Non-strict check: returns logical vector and warns
-#' idu_check(c("01001000AA0123", "12345"), error = FALSE)
+#' # Empty input
+#' idu_check(character(0), verbose = TRUE)
 #' }
 #'
 #' @export
-#'
-idu_check <- function(x, error = FALSE) {
+idu_check <- function(x, verbose = FALSE) {
+  # Ensure x is a character vector
   x <- as.character(x)
+
+  # Handle empty vector
+  if (length(x) == 0) {
+    if (verbose) warning("Input vector is empty.", call. = FALSE)
+    return(logical(0))
+  }
+
+  # Pattern for valid IDU
   pattern <- "^[0-9AB]{2}[0-9]{3}[0-9]{3}[0-9A-Z]{2}[0-9]{4}$"
+
+  # Check validity
   valid <- !is.na(x) & x != "" & nchar(x) == 14 & grepl(pattern, x)
 
-  if (!all(valid)) {
-    invalids <- paste(x[!valid], collapse = ", ")
-    m <- paste0("Invalid IDU(s) detected: ", invalids)
-    if (error) stop(m, call. = FALSE)
-    warning(m, invalids, call. = FALSE)
+  # Warning if requested
+  if (verbose && !all(valid)) {
+    invalids <- x[!valid]
+    msg <- if (length(invalids) == 0) {
+      "No invalid IDUs detected."
+    } else {
+      paste0("Invalid IDU(s) detected: ", paste(invalids, collapse = ", "))
+    }
+    warning(msg, call. = FALSE)
   }
 
   return(valid)
 }
 
 ### Manage IDU field in df section ----
-#' Detect the IDU column in a data frame
+#' Detect IDU column in a data.frame
 #'
-#' This function scans each column of a data frame to identify the one
-#' containing IDU values.
+#' This function checks a data.frame for a column that contains valid cadastral
+#' parcel identifiers (IDUs). It returns either the column name, position, or both.
 #'
-#' @param df A `data.frame` or similar object to search.
-#' @param output `character`. Defaults is `"both"`.
-#' Astring indicating the type of output:
-#'   `"name"` for the column name,
-#'   `"position"` for the column index,
-#'   or `"both"` for a list with both.
+#' @param df A `data.frame` or `tibble`.
+#' @param output One of `"both"`, `"name"`, or `"position"` (default `"both"`).
 #'
-#' @return
-#' A named list with:
-#' \describe{
-#'   \item{name}{The column name containing IDU values}
-#'   \item{position}{The column index in `df`}
-#' }
-#' Returns `NULL` if no column matches the IDU pattern.
+#' @return Depending on `output`:
+#'   - `"name"`: name of the first column containing valid IDUs.
+#'   - `"position"`: position index of the first column containing valid IDUs.
+#'   - `"both"`: a list with `name` and `position`.
+#'   If no column matches, returns `NULL` and prints a message.
 #'
 #' @examples
 #' \dontrun{
-#' df <- data.frame(
-#'   parcel_id = c("721870000A0001", "971020000B0002"),
-#'   name = c("Oak", "Pine"),
-#'   stringsAsFactors = FALSE
-#' )
-#' idu_detect_in_df(df)
-#' idu_detect_in_df(df, output = "name")
-#' idu_detect_in_df(df, output = "position")
-#' }
+#'df <- data.frame(a = c("721870000A0001", "971020000B0002"),
+#'                 b = c("abc", "def"),
+#'                 stringsAsFactors = FALSE)
+#'idu_detect_in_df(df, output = "both")
+#'}
 #'
 #' @export
-#'
 idu_detect_in_df <- function(df, output = c("both", "name", "position")) {
   output <- match.arg(output)
   if (!is.data.frame(df)) stop("'df' must be a data.frame or tibble", call. = FALSE)
@@ -259,13 +271,9 @@ idu_detect_in_df <- function(df, output = c("both", "name", "position")) {
     col <- df[[i]]
     if (!is.character(col)) next
 
-    # Catch any error from idu_check()
-    ok <- tryCatch({
-      idu_check(col, error = TRUE)  # stops if invalid
-      TRUE
-    }, error = function(e) FALSE)
-
-    if (ok) {
+    # Check if all values in the column are valid IDUs
+    valid <- idu_check(col, verbose = FALSE)
+    if (all(valid)) {
       return(switch(output,
                     name = names(df)[i],
                     position = i,
@@ -274,7 +282,7 @@ idu_detect_in_df <- function(df, output = c("both", "name", "position")) {
   }
 
   message("No column matches the IDU pattern.")
-  NULL
+  invisible(NULL)
 }
 
 #' Rename the IDU column in a data frame
@@ -312,58 +320,127 @@ idu_rename_in_df <- function(df, new_name) {
 }
 
 ### Get attribut IDU section ----
-#' Retrieve cadastral sheets IDs for given IDUs
+#' Retrieve parcel data for given IDUs
 #'
-#' This internal function retrieves the cadastral sheet (feuille) IDs associated with
-#' one or more IDU codes. It validates the IDUs, extracts their INSEE and
-#' sheet components, downloads sheet data from Etalab, and returns the
-#' matching sheet IDs.
+#' This function takes one or more valid IDU codes, retrieves parcel data from
+#' Etalab, and optionally enriches the parcels with their associated place
+#' names and administrative names. The function returns an `sf` object containing
+#' the parcels and requested attributes.
 #'
 #' @param idu A `character` vector of valid IDU codes.
-#' @param result_as_list `logical`. If `TRUE`, returns a named list where
-#'   names are INSEE codes and values are vectors of feuille IDs.
-#'   If `FALSE` (default), returns a flat character vector of feuille IDs.
+#' @param with_feuille `logical` (default: `TRUE`).
+#'   Whether to retrieve and merge sheet id associated with the parcels.
+#' @param with_lieudit `logical` (default: `TRUE`).
+#'   Whether to retrieve and merge place names associated with the parcels.
+#' @param with_cog `logical` (default: `TRUE`).
+#'   Whether to retrieve and merge administrative names
+#'   (region, department, commune) associated with the parcels.
+#' @param ... Additional arguments passed to [idu_get_cog()].
 #'
-#' @return Either a `character` vector of feuille IDs (`result_as_list = FALSE`)
-#'   or a named `list` of feuille IDs grouped by INSEE code (`result_as_list = TRUE`).
+#' @return An `sf` object containing parcel geometries, the IDU code, and optionally
+#'   associated place names and administrative names.
 #'
-#' @importFrom sf st_drop_geometry
+#' @details
+#' - All IDU codes are validated before any data is retrieved.
+#' - If `with_feuille = TRUE`, the function performs a spatial join with the
+#'   Etalab "lieux-dits" dataset and merges the names into the parcel data.
+#' - If `with_lieudit = TRUE`, the function performs a spatial join with the
+#'   Etalab "lieux-dits" dataset and merges the names into the parcel data.
+#' - If `with_cog = TRUE`, the function retrieves region, department, and commune
+#'   names using [idu_get_cog()] and merges them into the parcel data.
+#' - The function ensures that Etalab data are returned as `sf` objects.
+#'
+#' @importFrom sf st_join st_drop_geometry
 #'
 #' @examples
 #' \dontrun{
-#' # Get a flat vector of feuille IDs
-#' idu_get_feuille(idu = c("721870000A0001", "721870000A0002"))
+#' # Retrieve parcels with both lieudit and names
+#' idu_get_parcelle(c("721870000A0001", "721870000A0002"))
 #'
-#' # Get feuille IDs grouped by INSEE code
-#' idu_get_feuille(idu = c("721870000A0001", "721870000A0002"), result_as_list = TRUE)
+#' # Retrieve parcels without lieudit
+#' idu_get_parcelle("721870000A0001", with_lieudit = FALSE)
+#'
+#' # Retrieve parcels without administrative names
+#' idu_get_parcelle("721870000A0001", with_cog = FALSE)
 #' }
 #'
 #' @export
 #'
-idu_get_feuille <- function(idu, result_as_list = FALSE) {
-  # Retrieve Etalab data
-  idu_check(idu, error = TRUE)
-  idu_parts <- idu_split(idu)
+idu_get_parcelle <- function(idu,
+                             with_feuille = TRUE,
+                             with_lieudit = TRUE,
+                             with_cog = TRUE,
+                             ...) {
+
+  # Split IDU and extract unique INSEE codes
+  idu_parts   <- idu_split(idu)
   insee_codes <- unique(idu_parts$insee)
-  feuilles <- get_etalab(insee_codes, "feuilles", verbose = TRUE)
 
-  # Extract feuille codes
-  feuilles$codes <- substr(feuilles$id, 1, 10)
+  # Download parcels
+  parcelles <- get_etalab(insee_codes, "parcelles", verbose = FALSE) |>
+    idu_rename_in_df("idu") |>
+    subset(idu %in% idu_parts$idu)
 
-  # Filter only the relevant feuilles
-  selected <- feuilles[feuilles$codes %in% unique(substr(idu, 1, 10)), c("id", "commune")] |>
-    st_drop_geometry()
-
-  if (result_as_list) {
-    # Create named list: names = insee codes, values = feuille IDs
-    feuilles_list <- lapply(unique(idu_parts$insee), function(code) {
-      selected$id[selected$commune == code]
-    })
-    names(feuilles_list) <- unique(idu_parts$insee)
-    return(feuilles_list)
-  } else {
-    selected$id
+  # Ensure parcels are sf objects
+  if (!inherits(parcelles, "sf")) {
+    stop("Etalab data must be 'sf' objects.", call. = FALSE)
   }
+
+  # Retrieve sheets
+  if (with_feuille) {
+    sheets <- tryCatch(
+      get_etalab(insee_codes, "feuilles", verbose = FALSE),
+      error = function(e) NULL
+    )
+
+    # Only process if sheets is an sf object
+    if (inherits(sheets, "sf")) {
+      intersections <- suppressWarnings(
+        st_join(parcelles, sheets, largest = TRUE) |> st_drop_geometry()
+      )
+
+      # Warn if some sheets names are missing
+      if (anyNA(intersections$id )) {
+        warning("Some sheets (feuille) names are missing (NA) in the 'etalab' data.", call. = FALSE)
+      }
+
+      # Merge parcels with place names
+      parcelles <- merge(parcelles, intersections[, c("idu", "id")], by = "idu")
+      names(parcelles)[names(parcelles) == "id"] <- "feuille"
+    }
+  }
+
+  # Retrieve lieux_dits if requested
+  if (with_lieudit) {
+    lieudits <- tryCatch(
+      get_etalab(insee_codes, "lieux_dits", verbose = FALSE),
+      error = function(e) NULL
+    )
+
+    # Only process if lieudits is an sf object
+    if (inherits(lieudits, "sf")) {
+      intersections <- suppressWarnings(
+        st_join(parcelles, lieudits, largest = TRUE) |> st_drop_geometry()
+      )
+
+      # Warn if some place names are missing
+      if (anyNA(intersections$nom)) {
+        warning("Some place names (lieu-dit) are missing (NA) in the 'etalab' data.", call. = FALSE)
+      }
+
+      # Merge parcels with place names
+      parcelles <- merge(parcelles, intersections[, c("idu", "nom")], by = "idu")
+      names(parcelles)[names(parcelles) == "nom"] <- "lieu_dit"
+    }
+  }
+
+  # Retrieve parcel names if requested
+  if (with_cog) {
+    names_df <- idu_get_cog(idu, ...)
+    parcelles <- merge(parcelles, names_df, by = "idu")
+  }
+
+  parcelles
 }
 
 #' Get region/department/commune names from IDU codes
@@ -391,7 +468,6 @@ idu_get_feuille <- function(idu, result_as_list = FALSE) {
 #' }
 #'
 #' @keywords internal
-#'
 idu_get_cog <- function(idu, loc = c("reg", "dep", "com"), cog_field = "NCC") {
   # Match argument
   loc <- match.arg(loc, c("reg", "dep", "com"), several.ok = TRUE)
@@ -435,166 +511,4 @@ idu_get_cog <- function(idu, loc = c("reg", "dep", "com"), cog_field = "NCC") {
   if ("com" %in% loc)   keep_cols <- c(keep_cols, "code_com", "com_name")
 
   res[, intersect(keep_cols, names(res)), drop = FALSE]
-}
-
-#' Retrieve parcel data for given IDUs
-#'
-#' This function takes one or more valid IDU codes, retrieves parcel data from
-#' Etalab, and optionally enriches the parcels with their associated lieu-dit
-#' names and administrative names. The function returns an `sf` object containing
-#' the parcels and requested attributes.
-#'
-#' @param idu A `character` vector of valid IDU codes.
-#' @param with_lieudit `logical` (default: `TRUE`). Whether to retrieve and merge
-#'   lieu-dit names associated with the parcels.
-#' @param with_cog `logical` (default: `TRUE`). Whether to retrieve and merge
-#'   administrative names (region, department, commune) associated with the parcels.
-#' @param ... Additional arguments passed to [idu_get_cog()].
-#'
-#' @return An `sf` object containing parcel geometries, the IDU code, and optionally
-#'   associated lieu-dit names and administrative names.
-#'
-#' @details
-#' - All IDU codes are validated before any data is retrieved.
-#' - If `with_lieudit = TRUE`, the function performs a spatial join with the
-#'   Etalab "lieux-dits" dataset and merges the names into the parcel data.
-#' - If `with_cog = TRUE`, the function retrieves region, department, and commune
-#'   names using [idu_get_cog()] and merges them into the parcel data.
-#' - The function ensures that Etalab data are returned as `sf` objects.
-#'
-#' @importFrom sf st_join st_drop_geometry
-#'
-#' @examples
-#' \dontrun{
-#' # Retrieve parcels with both lieudit and names
-#' idu_get_parcelle(c("721870000A0001", "721870000A0002"))
-#'
-#' # Retrieve parcels without lieudit
-#' idu_get_parcelle("721870000A0001", with_lieudit = FALSE)
-#'
-#' # Retrieve parcels without administrative names
-#' idu_get_parcelle("721870000A0001", with_cog = FALSE)
-#' }
-#'
-#' @export
-#'
-idu_get_parcelle <- function(idu, with_lieudit = TRUE, with_cog = TRUE, ...) {
-  # Validate IDUs
-  idu_check(idu, error = TRUE)
-
-  # Split IDU and extract unique INSEE codes
-  idu_parts   <- idu_split(idu)
-  insee_codes <- unique(idu_parts$insee)
-
-  # Download parcels
-  parcelles <- get_etalab(insee_codes, verbose = FALSE) |>
-    idu_rename_in_df("idu") |>
-    subset(idu %in% idu_parts$idu)
-
-  # Ensure parcels are sf objects
-  if (!inherits(parcelles, "sf")) {
-    stop("Etalab data must be 'sf' objects.", call. = FALSE)
-  }
-
-  # Retrieve lieux-dits if requested
-  if (with_lieudit) {
-    lieudits <- tryCatch(
-      get_etalab(insee_codes, "lieux_dits", verbose = FALSE),
-      error = function(e) NULL
-    )
-
-    # Only process if lieudits is an sf object
-    if (inherits(lieudits, "sf")) {
-      intersections <- suppressWarnings(
-        st_join(parcelles, lieudits, largest = TRUE) |> st_drop_geometry()
-      )
-
-      # Warn if some lieu-dit names are missing
-      if (anyNA(intersections$nom)) {
-        warning("Some lieu-dit names are missing (NA) in the 'etalab' data.")
-      }
-
-      # Merge parcels with lieu-dit names
-      parcelles <- merge(parcelles, intersections[, c("idu", "nom")], by = "idu")
-      names(parcelles)[names(parcelles) == "nom"] <- "lieudit"
-    }
-  }
-
-  # Retrieve parcel names if requested
-  if (with_cog) {
-    names_df <- idu_get_cog(idu, ...)
-    parcelles <- merge(parcelles, names_df, by = "idu")
-  }
-
-  parcelles
-}
-
-#' Retrieve attributes for given IDUs
-#'
-#' This function extracts one or more attributes associated with cadastral parcels
-#' identified by their IDU (Unique Parcel ID). It uses [idu_get_parcelle()] to
-#' retrieve parcel data and then returns only the requested attributes.
-#'
-#' @param idu A `character` vector of valid IDU codes.
-#' @param attribute `character`. One or more attributes to retrieve. Choices are:
-#'   \describe{
-#'     \item{`"lieudit"`}{Lieu-dit name associated with the parcel.}
-#'     \item{`"contenance"`}{Parcel surface area (in square meters).}
-#'     \item{`"reg_name"`}{Region name associated with the parcel.}
-#'     \item{`"dep_name"`}{Department name associated with the parcel.}
-#'     \item{`"com_name"`}{Commune name associated with the parcel.}
-#'   }
-#' @param sf_as_result `logical` (default: `FALSE`). If `TRUE`, the result is
-#'   returned as an `sf` object with geometries; otherwise, a plain data.frame
-#'   without geometries is returned.
-#'
-#' @return A `data.frame` or an `sf` object containing the `idu` column and the
-#'   requested attribute(s).
-#'
-#' @details
-#' - All IDU codes are validated before retrieving any data.
-#' - By default, geometry is dropped and a `data.frame` is returned.
-#' - Setting `sf_as_result = TRUE` preserves the geometry and returns an `sf` object.
-#'
-#' @importFrom sf st_drop_geometry
-#'
-#' @examples
-#' \dontrun{
-#' idu <- c("721870000A0001", "721870000A0002")
-#'
-#' # Retrieve lieu-dit names
-#' idu_get_attribute(idu, attribute = "lieudit")
-#'
-#' # Retrieve parcel surfaces
-#' idu_get_attribute(idu, attribute = "contenance")
-#'
-#' # Retrieve multiple attributes as a plain data.frame
-#' idu_get_attribute(idu, attribute = c("lieudit", "contenance"))
-#'
-#' # Retrieve multiple attributes as an sf object
-#' idu_get_attribute(idu, attribute = c("lieudit", "reg_name"), sf_as_result = TRUE)
-#' }
-#'
-#' @export
-#'
-idu_get_attribute <- function(idu,
-                              attribute = c("lieudit", "contenance",
-                                            "reg_name", "dep_name", "com_name"),
-                              sf_as_result = FALSE) {
-
-  # Validate and normalize requested attributes
-  attribute <- match.arg(attribute,
-                         choices = c("lieudit", "contenance",
-                                     "reg_name", "dep_name", "com_name"),
-                         several.ok = TRUE)
-
-  # Get parcels with minimal data needed
-  res <- idu_get_parcelle(idu)[, c("idu", attribute), drop = FALSE]
-
-  # Convert to plain data.frame unless sf output is requested
-  if (isFALSE(sf_as_result)) {
-    res <- st_drop_geometry(res)
-  }
-
-  res
 }

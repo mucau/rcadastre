@@ -70,15 +70,15 @@ tm_shape(communes) +
 
 ## Etalab data
 
-More datasets are available by donwloading data from this server:
+More datasets are available by downloading data from this server:
 <https://cadastre.data.gouv.fr/data/>.
 
 The `get_etalab_data()` function allows access to **PCI Etalab** raw
-data from the previous server. Datas are producted by date (millesime).
+data from the previous server. Data are produced by version (millesime).
 
 To know from **PCI Etalab** data server :
 
--   available millesimes, run `get_data_millesimes("etalab")` (for quick
+-   available cadastral version, run `get_data_millesimes("etalab")` (for quick
     use, `"latest"` is better)
 
 -   available data, run `get_etalab_layernames()`.
@@ -91,15 +91,15 @@ library(frcadastre)
 library(tmap)
 ttm()
 
-# Available dataset from Etalab bundle
-get_etalab_layernames("proc")
+# Available dataset from Etalab server
+get_etalab_layernames("raw")
 
 
 # Download dataset from Etalab data server
-commune  <- get_etalab_data(commune = "72187", data = "commune") # 'Marigne-Laille' again
-parcelle <- get_etalab_data(commune = "72187", data = "parcelle")
-batiment <- get_etalab_data(commune = "72187", data = "batiment")
-borne    <- get_etalab_data(commune = "72187", data = "borne")
+commune  <- get_etalab(commune = "72187", data = "commune") # 'Marigne-Laille' again
+parcelle <- get_etalab(commune = "72187", data = "parcelle")
+batiment <- get_etalab(commune = "72187", data = "batiment")
+borne    <- get_etalab(commune = "72187", data = "borne")
 
 tm_shape(commune) +
   tm_polygons(border.col = "red", fill_alpha = 0.5) +
@@ -113,8 +113,8 @@ tm_shape(commune) +
 
 ## PCI data
 
-Old raw datasets are also available from server. The `get_pci_raw()`
-function allows access to **PCI** raw data. Datas are also producted by
+Old raw datasets are also available from server. The `get_pci()`
+function allows access to **PCI** raw data. Data are also produced by
 date (millesime) in `DXF` and `EDIGEO` format.
 
 If you're motivated to juggle this data, good luck!
@@ -127,7 +127,7 @@ The `frcadastre` package offers some tools to manage IDU:
 
 -   `idu_check()` checks the IDU shape by using a pattern
 -   `idu_build()` and `idu_split()` aggregate or split an IDU
--   `idu_detect_in_df()` and `idu_rename_in_df()` namange IDU in
+-   `idu_detect_in_df()` and `idu_rename_in_df()` rename IDU in
     `data.frame` or `sf` object.
 
 The most useful remains `idu_get_parcelle()` to get parcelle according

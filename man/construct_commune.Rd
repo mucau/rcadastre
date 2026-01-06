@@ -7,19 +7,21 @@
 construct_commune(commune)
 }
 \arguments{
-\item{commune}{\code{character} vector. The INSEE code(s) of the commune(s).}
+\item{commune}{\code{character} vector. Validated INSEE code(s) of the commune(s).}
 }
 \value{
-A \code{character} string combining department and commune codes separated by a slash.
+A \code{character} vector combining department and commune codes separated by a slash.
 }
 \description{
-Constructs a path string for a given commune code by prepending
-the department code (first two characters) and joining them with a slash.
+Constructs a path string for a given commune code by adding the department
+code (first two characters, or three for 97x) as a prefix joined with a slash.
 }
 \examples{
 \dontrun{
 construct_commune("72187")
 # Returns: "72/72187"
+construct_commune(c("72187", "75056"))
+# Returns: c("72/72187", "75/75056")
 }
 
 }

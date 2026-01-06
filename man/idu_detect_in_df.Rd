@@ -2,41 +2,34 @@
 % Please edit documentation in R/idu.R
 \name{idu_detect_in_df}
 \alias{idu_detect_in_df}
-\title{Detect the IDU column in a data frame}
+\title{Detect IDU column in a data.frame}
 \usage{
 idu_detect_in_df(df, output = c("both", "name", "position"))
 }
 \arguments{
-\item{df}{A \code{data.frame} or similar object to search.}
+\item{df}{A \code{data.frame} or \code{tibble}.}
 
-\item{output}{\code{character}. Defaults is \code{"both"}.
-Astring indicating the type of output:
-\code{"name"} for the column name,
-\code{"position"} for the column index,
-or \code{"both"} for a list with both.}
+\item{output}{One of \code{"both"}, \code{"name"}, or \code{"position"} (default \code{"both"}).}
 }
 \value{
-A named list with:
-\describe{
-\item{name}{The column name containing IDU values}
-\item{position}{The column index in \code{df}}
+Depending on \code{output}:
+\itemize{
+\item \code{"name"}: name of the first column containing valid IDUs.
+\item \code{"position"}: position index of the first column containing valid IDUs.
+\item \code{"both"}: a list with \code{name} and \code{position}.
+If no column matches, returns \code{NULL} and prints a message.
 }
-Returns \code{NULL} if no column matches the IDU pattern.
 }
 \description{
-This function scans each column of a data frame to identify the one
-containing IDU values.
+This function checks a data.frame for a column that contains valid cadastral
+parcel identifiers (IDUs). It returns either the column name, position, or both.
 }
 \examples{
 \dontrun{
-df <- data.frame(
-  parcel_id = c("721870000A0001", "971020000B0002"),
-  name = c("Oak", "Pine"),
-  stringsAsFactors = FALSE
-)
-idu_detect_in_df(df)
-idu_detect_in_df(df, output = "name")
-idu_detect_in_df(df, output = "position")
+df <- data.frame(a = c("721870000A0001", "971020000B0002"),
+                b = c("abc", "def"),
+                stringsAsFactors = FALSE)
+idu_detect_in_df(df, output = "both")
 }
 
 }

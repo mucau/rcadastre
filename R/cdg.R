@@ -4,7 +4,7 @@
 #' This function returns the base URL for a given cadastre.data.gouv site.
 #'
 #' @param site `character`. The cadastre site to use.
-#' Must be one of `"pci"` or `"etalab"`.
+#'    Must be one of `"pci"` or `"etalab"`.
 #'
 #' @return A single character string representing the base URL for the requested site.
 #'
@@ -27,7 +27,6 @@
 #' }
 #'
 #' @keywords internal
-#'
 get_base_data_url <- function(site) {
   site <- tryCatch(
     match.arg(site, c("pci", "etalab")),
@@ -42,22 +41,46 @@ get_base_data_url <- function(site) {
   sprintf("https://cadastre.data.gouv.fr/data/%s", mapping[site])
 }
 
+#' Construct a commune path string
+#'
+#' Constructs a path string for a given commune code by adding the department
+#' code (first two characters, or three for 97x) as a prefix joined with a slash.
+#'
+#' @param commune `character` vector. Validated INSEE code(s) of the commune(s).
+#'
+#' @return A `character` vector combining department and commune codes separated by a slash.
+#'
+#' @examples
+#' \dontrun{
+#' construct_commune("72187")
+#' # Returns: "72/72187"
+#' construct_commune(c("72187", "75056"))
+#' # Returns: c("72/72187", "75/75056")
+#' }
+#'
+#' @keywords internal
+construct_commune <- function(commune) {
+  # Assumes commune codes are already validated
+  dep <- substr(commune, 1, ifelse(substr(commune, 1, 2) == "97", 3, 2))
+  file.path(dep, commune)
+}
+
 #' Construct the Full Data URL for cadastre.data.gouv
 #'
-#' This function builds the complete URL to access cadastre data for a
-#' given cadastre.data.gouv site, commune, and millesime.
+#' This function builds the complete URL to access cadastral data for a
+#' given cadastre.data.gouv site, commune, and cadastral version.
 #' The function handles default formats and scales for each site.
 #'
 #' @param site `character`. The cadastre site to use.
-#' Must be one of `"pci"` or `"etalab"`.
+#'    Must be one of `"pci"` or `"etalab"`.
 #' @param commune `character` vector. The INSEE code(s) of the commune(s).
-#' @param millesime `character`. The version or millesime of the dataset.
-#' Must be on of `get_data_millesimes("pci")`. Default is `"latest"`.
+#' @param millesime `character`. The version of the dataset.
+#'    Must be on of `get_data_millesimes("pci")`. Default is `"latest"`.
 #' @param format `character`. Optional. The format of the data.
-#' For "pci", must be `"edigeo"` or `"dxf"`.
-#' For "etalab", the default is "geojson".
+#'    For "pci", must be `"edigeo"` or `"dxf"`.
+#'    For "etalab", the default is "geojson".
 #'
-#' @return A character vector of full URLs for the requested site, commune(s), and millesime.
+#' @return A character vector of full URLs for the requested site, commune(s), and cadastral version.
 #'
 #' @details
 #' The function validates the site and commune codes.
@@ -83,7 +106,6 @@ get_base_data_url <- function(site) {
 #' }
 #'
 #' @keywords internal
-#'
 construct_data_url <- function(site,
                                commune,
                                millesime = "latest",
@@ -92,56 +114,33 @@ construct_data_url <- function(site,
   # Validate site
   site <- match.arg(site, c("pci", "etalab"))
 
-  # Validate commune codes
-  commune <- as.character(commune)
-  if (!all(commune %in% frcadastre::commune_2025$COM)) {
-    stop("Some commune codes are invalid.")
+  # Validate commune codes (once)
+  valid <- check_insee(commune, verbose = FALSE)
+  if (!all(valid)) {
+    stop("Some INSEE codes are invalid or correspond to mother communes.")
   }
 
-  # Determine millesime
+  # Determine cadastral version
   millesime <- match.arg(millesime, get_data_millesimes("pci"))
 
-  # Default formats and scales
+  # Determine scale and format
   if (site == "pci") {
-    scale  <- "feuilles"
+    scale <- "feuilles"
+    if (is.null(format)) format <- "edigeo"
     format <- match.arg(format, c("edigeo", "dxf"))
   } else if (site == "etalab") {
-    scale  <- "communes"
+    scale <- "communes"
     format <- "geojson"
   }
 
   # Base URL
   base <- get_base_data_url(site)
 
-  # Construct commune path
-  commune <- construct_commune(commune)
+  # Commune path
+  commune_paths <- construct_commune(commune)
 
-  # Construct URLs (vectorized)
-  file.path(base, millesime, format, scale, commune)
-}
-
-#' Construct a commune path string
-#'
-#' Constructs a path string for a given commune code by prepending
-#' the department code (first two characters) and joining them with a slash.
-#'
-#' @param commune `character` vector. The INSEE code(s) of the commune(s).
-#'
-#' @return A `character` string combining department and commune codes separated by a slash.
-#'
-#' @examples
-#' \dontrun{
-#' construct_commune("72187")
-#' # Returns: "72/72187"
-#' }
-#'
-#' @keywords internal
-#'
-construct_commune <- function(commune) {
-  insee_check(commune, scale_as_return = FALSE, verbose = FALSE)
-
-  dep <- substr(commune, 1, ifelse(substr(commune, 1, 2) == "97", 3, 2))
-  file.path(dep, commune)
+  # Construct full URLs
+  file.path(base, millesime, format, scale, commune_paths)
 }
 
 ### Milesime section ----
@@ -152,8 +151,8 @@ construct_commune <- function(commune) {
 #'
 #' @param url `character`. One or more base URLs to scan.
 #' @param absolute `logical`. Default is `"TRUE"`.
-#' If `TRUE` (default), returned links are converted to absolute URLs.
-#' If `FALSE`, relative paths are preserved.
+#'    If `TRUE` (default), returned links are converted to absolute URLs.
+#'    If `FALSE`, relative paths are preserved.
 #'
 #' @return A character vector of detected URLs.
 #'
@@ -172,7 +171,6 @@ construct_commune <- function(commune) {
 #' @importFrom xml2 xml_find_all xml_attr url_absolute
 #'
 #' @keywords internal
-#'
 detect_urls <- function(url, absolute = TRUE) {
   detect_one <- function(url) {
     page <- request(url) |>
@@ -196,19 +194,19 @@ detect_urls <- function(url, absolute = TRUE) {
   unlist(lapply(url, detect_one), use.names = FALSE)
 }
 
-#' Detect available years (millesimes)
+#' Detect available cadastral version
 #'
-#' Retrieves and returns the list of available "millesimes" (year directories)
+#' Retrieves and returns the list of available cadastral version directories
 #' from a specified data site.
 #'
 #' @param site `character`. The cadastre site to use.
-#' Must be one of `"pci"` or `"etalab"`.
+#'    Must be one of `"pci"` or `"etalab"`.
 #'
-#' @return A `character` vector of unique year identifiers (millesimes) found on the site.
+#' @return A `character` vector of unique cadastral version found on the site.
 #'
 #' @details
 #' The function queries the base data URL for the specified site and extracts
-#' the list of available millésime directories.
+#' the list of available cadastral version directories.
 #'
 #' @examples
 #' \dontrun{
@@ -217,7 +215,6 @@ detect_urls <- function(url, absolute = TRUE) {
 #' }
 #'
 #' @export
-#'
 get_data_millesimes <- function(site) {
   site <- match.arg(site, c("pci", "etalab"))
   detect_urls(get_base_data_url(site), FALSE)
@@ -227,17 +224,15 @@ get_data_millesimes <- function(site) {
 #' Detect and validate INSEE code (city or department)
 #'
 #' Checks if the provided INSEE code(s) are valid among communes or departments.
-#' Optionally returns the administrative scale ("communes" or "departements")
+#' Optionally returns the administrative scale ("communes" or "departments")
 #' for each code.
 #'
 #' @param x `character` or `numeric`. Vector of INSEE codes to validate.
-#' @param scale_as_return `logical`. If `TRUE`, returns a character vector
-#' indicating the detected scale ("communes" or "departements") for each code.
 #' @param verbose `logical`. If `TRUE`, prints informative messages for each code.
 #'
-#' @return If `scale_as_return = TRUE`, a character vector of length `length(x)`
-#' with values `"communes"` or `"departements"`. If `scale_as_return = FALSE`,
-#' returns invisibly `NULL`.
+#' @return A logical vector of the same length as `x`.
+#'   Each element is `TRUE` if the corresponding INSEE code is valid (commune or department),
+#'   and `FALSE` otherwise. Mother communes (Paris, Lyon, Marseille) are considered invalid.
 #'
 #' @details
 #' The function accepts either 5-character INSEE codes for communes or 2-3
@@ -246,13 +241,13 @@ get_data_millesimes <- function(site) {
 #' @examples
 #' \dontrun{
 #' # Validate a single commune
-#' insee_check(72187)
+#' check_insee(72187)
 #' # Returns: Commune '72187' = 'Marigné-Laillé' selected
-#' insee_check(72187, TRUE)
+#' check_insee(72187, TRUE)
 #' # Returns: "communes"
 #'
 #' # Validate multiple codes and return scale
-#' insee_check(c(72, 72187, 72187))
+#' check_insee(c(72, 72187, 72187))
 #' # Returns:
 #' # Department '72' = 'Sarthe' selected
 #' # Commune '72187' = 'Marigné-Laillé' selected
@@ -260,106 +255,77 @@ get_data_millesimes <- function(site) {
 #' }
 #'
 #' @export
-#'
-insee_check <- function(x, scale_as_return = FALSE, verbose = TRUE) {
+check_insee <- function(x, verbose = TRUE) {
   x <- as.character(x)
-  communes    <- frcadastre::commune_2025
-  departements <- frcadastre::departement_2025
 
-  scales_detected <- character(length(x))
+  # Reference tables
+  communes <- frcadastre::commune_2025$COM
+  departments <- frcadastre::departement_2025$DEP
 
-  for (i in seq_along(x)) {
-    code <- x[i]
+  # Mother communes
+  arr_to_check <- c(paris = "75056", lyon = "69123", marseille = "13055")
+  arr_prefix <- c(paris = "751", lyon = "693", marseille = "132")
 
-    if (nchar(code) == 5) {
-      # Commune
-      idx <- which(communes$COM == code)
-      if (length(idx) == 0) stop(sprintf("Commune '%s' not found. Run frcadastre::commune_2025", code))
-      log_msg(verbose, sprintf("Commune '%s' = '%s' selected", code, communes$NCCENR[idx]))
-      if (scale_as_return) scales_detected[i] <- "communes"
-
-    } else if (nchar(code) %in% c(2, 3)) {
-      # Department
-      idx <- which(departements$DEP == code)
-      if (length(idx) == 0) stop(sprintf("Department '%s' not found. Run frcadastre::departement_2025", code))
-      log_msg(verbose, sprintf("Department '%s' = '%s' selected", code, departements$LIBELLE[idx]))
-      if (scale_as_return) scales_detected[i] <- "departements"
-
-    } else {
-      stop(sprintf("Invalid code '%s'. Must be a 5-char commune or 2-3 char department.", code))
-    }
-  }
-
-  if (scale_as_return) return(scales_detected)
-  invisible(NULL)
-}
-
-#' Ensure that INSEE commune codes are not "mother communes"
-#'
-#' Some French cities (Paris, Lyon, Marseille) have a "mother commune" code
-#' (respectively 75056, 69123, 13055) that should not be used directly in
-#' cadastral queries. Instead, one must use the codes of their arrondissements
-#' (TYPECOM = "ARM"). This function checks a vector of commune codes and raises
-#' an error if one of the forbidden "mother commune" codes is found.
-#'
-#' @param x `character` or `numeric`. Vector of INSEE codes to validate.
-#'
-#' @return Invisibly returns `x` if no error is raised.
-#'
-#' @details
-#' If `x` contains one of the codes \code{75056}, \code{69123}, or \code{13055},
-#' an error is raised. The error message lists the valid arrondissement codes
-#' available in \code{frcadastre::commune_2025} for the corresponding city.
-#'
-#' @examples
-#' \dontrun{
-#' # Valid code, returns silently
-#' ensure_is_not_arr(35238)
-#'
-#' # Invalid code: mother commune of Paris
-#' ensure_is_not_arr(75056)
-#'
-#' # Vector input: mix of valid and invalid codes
-#' ensure_is_not_arr(c(35238, 75056, 69123))
-#' }
-#'
-#' @references
-#' Carteron, P. *happign* – R Interface to 'IGN' Web Services.
-#' GitHub: \url{https://github.com/paul-carteron/happign/blob/main/R/get_apicarto_cadastre.R}
-#'
-#' @keywords internal
-#'
-ensure_is_not_arr <- function(x) {
-  # Codes of "mother communes" (Paris, Lyon, Marseille)
-  arr_to_check <- c(paris = 75056, lyon = 69123, marseille = 13055)
-  # Prefixes of arrondissement commune codes
-  arr <- c(paris = "751", lyon = "693", marseille = "132")
-
-  # Find which elements of x are "mother commune" codes
-  is_arr <- x %in% arr_to_check
-
-  if (any(is_arr)) {
-    # Collect error messages for each invalid code
-    msgs <- vapply(x[is_arr], function(code) {
-      # Identify corresponding city
+  # Identify mother communes
+  is_mother <- x %in% arr_to_check
+  if (any(is_mother) && verbose) {
+    msgs <- vapply(x[is_mother], function(code) {
       ville <- names(arr_to_check)[match(code, arr_to_check)]
-
-      # Make sure COM is treated as character, explicit column reference
       valid_arr <- frcadastre::commune_2025[
         frcadastre::commune_2025$TYPECOM == "ARM" &
-          startsWith(as.character(frcadastre::commune_2025$COM), arr[ville]),
+          startsWith(as.character(frcadastre::commune_2025$COM), arr_prefix[ville]),
       ]
-
       sprintf(
-        "Code %s corresponds to the mother commune of %s.\nUse one of the following arrondissement codes instead: %s",
+        "mother commune: %s (%s). Use one of: %s",
         code, ville, paste(valid_arr$COM, collapse = ", ")
       )
     }, FUN.VALUE = character(1))
-
-    # Raise a single error containing all invalid cases
-    stop(paste(msgs, collapse = "\n"), call. = FALSE)
+    warning(paste(msgs, collapse = "\n"), call. = FALSE)
   }
 
-  # Otherwise return x invisibly
-  invisible(x)
+  # Generic validity check
+  is_valid <- (nchar(x) == 5 & x %in% communes) |
+    (nchar(x) %in% c(2,3) & x %in% departments)
+
+  # Mother communes are considered invalid
+  is_valid[is_mother] <- FALSE
+
+  # Warn about invalid codes (excluding mother communes)
+  invalid_generic <- x[!is_valid & !is_mother]
+  if (length(invalid_generic) > 0 && verbose) {
+    warning("Invalid INSEE code(s): ", paste(invalid_generic, collapse = ", "), call. = FALSE)
+  }
+
+  return(is_valid)
+}
+
+#' Get administrative scale of INSEE codes
+#'
+#' Returns administrative scale for each INSEE code.
+#'
+#' @param x `character` or `numeric`. Vector of INSEE codes.
+#'
+#' @return Character vector of length `length(x)` with values "communes" or "departements".
+#'
+#' @examples
+#' \dontrun{
+#' get_insee_scale(72187)        # "communes"
+#' get_insee_scale(c(72, 72187)) # c("departements", "communes")
+#' }
+#'
+#' @keywords internal
+get_insee_scale <- function(x) {
+  x <- as.character(x)
+  communes <- frcadastre::commune_2025$COM
+  departments <- frcadastre::departement_2025$DEP
+
+  scales <- character(length(x))
+  scales[nchar(x) == 5 & x %in% communes] <- "communes"
+  scales[nchar(x) %in% c(2,3) & x %in% departments] <- "departements"
+
+  if (any(scales == "")) {
+    stop("Cannot determine scale for code(s): ", paste(x[scales==""], collapse=", "))
+  }
+
+  scales
 }

@@ -9,10 +9,11 @@ test_that("construct_data_url returns correct URLs for Etalab", {
 })
 
 test_that("construct_data_url errors on invalid commune", {
-  expect_error(construct_data_url("pci", "99999"), "Some commune codes are invalid")
+  expect_error(construct_data_url("pci", "99999"),
+               "Some INSEE codes are invalid or correspond to mother communes")
 })
 
 test_that("construct_data_url works for multiple communes", {
-  urls <- construct_data_url("pci", c("72187", "75056"), millesime = "latest", format = "edigeo")
+  urls <- construct_data_url("pci", c("72187", "72181"), millesime = "latest", format = "edigeo")
   expect_length(urls, 2)
 })

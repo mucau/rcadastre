@@ -6,7 +6,7 @@
 \usage{
 get_etalab_raw(
   commune,
-  data,
+  layer,
   millesime = "latest",
   extract_dir = NULL,
   verbose = TRUE
@@ -16,12 +16,10 @@ get_etalab_raw(
 \item{commune}{\code{character} or \code{numeric} vector.
 The INSEE code(s) of the commune(s).}
 
-\item{data}{\code{character} vector or \code{list}.
-If \code{character}, a vector of layers will be paired with all communes (Cartesian product).
-If \code{list}, each element corresponds to a vector of layers for the matching commune.
+\item{layer}{\code{character}. Datasets raw name to download.
 Must be dataset names returned by \code{\link[=get_etalab_layernames]{get_etalab_layernames()}}.}
 
-\item{millesime}{\code{character}. The version or millesime of the dataset.
+\item{millesime}{\code{character}. Dataset version for raw layers.
 Must be on of \code{get_data_millesimes("etalab")}. Default is \code{"latest"}.}
 
 \item{extract_dir}{\code{character} or \code{NULL}.
@@ -31,14 +29,13 @@ If \code{NULL}, a temporary directory is used.}
 \item{verbose}{\code{logical}. If \code{TRUE}, prints progress messages.}
 }
 \value{
-An \code{sf} object if a single layer is retrieved, or a named list of \code{sf}
-objects if multiple layers are retrieved.
-If no valid data is retrieved, the function returns \code{NULL} with a warning.
+An \code{sf} object containing the requested layer, or \code{NULL} if download/read fails
 }
 \description{
-This function downloads Etalab cadastre data for given communes
-and layers, extracts the archives, and reads the GeoJSON files
-into \code{sf} objects.
+This function downloads Etalab cadastre dataset for given communes
+and layer.
+The results are returned as an \code{sf} object. If multiple files are retrieved
+(e.g. several communes), they are combined into a single \code{sf} object.
 }
 \details{
 A detailed description of the data structure is available at the following link:
@@ -46,14 +43,15 @@ A detailed description of the data structure is available at the following link:
 }
 \examples{
 \dontrun{
-# Download and read parcels and lieux_dits for one commune
-get_etalab_raw("72187", c("parcelles", "lieux_dits"))
+# Download and read parcels for one commune
+get_etalab_raw("72187", "parcelle")
 
-# Multiple communes with pairwise layers
-get_etalab_raw(c("72187", "72181"), list(c("parcelles", "lieux_dits"), c("commune")))
+# Download and read parcels for multiple communes
+get_etalab_raw(c("72187", "72181"), "parcelle")
 }
 
 }
 \seealso{
 \code{\link[=get_etalab_layernames]{get_etalab_layernames()}}, \code{\link[=get_data_millesimes]{get_data_millesimes()}}
 }
+\keyword{internal}

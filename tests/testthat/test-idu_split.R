@@ -39,8 +39,7 @@ test_that("idu_split returns character columns", {
   expect_type(res$insee, "character")
 })
 
-test_that("idu_split calls insee_check", {
-  # Using a mock or spy for insee_check if needed
+test_that("idu_split calls check_insee", {
   idu <- "721870000A0001"
   expect_silent(idu_split(idu))
 })

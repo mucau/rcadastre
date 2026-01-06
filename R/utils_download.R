@@ -27,9 +27,9 @@ get_extension <- function(filename) {
   tolower(ext)
 }
 
-#' Extract a .gz file
+#' Extract a GZ file
 #'
-#' @param src Character, path to the .gz file
+#' @param src Character, path to the GZ file
 #' @param dest Character, path to write the decompressed file
 #' @return Path to the decompressed file
 #' @keywords internal
@@ -44,7 +44,7 @@ extract_gz <- function(src, dest) {
   dest
 }
 
-#' Extract a file (gz or archive)
+#' Extract a file (GZ file or archive)
 #'
 #' @param filepath Character, path to the file to extract
 #' @param extract_dir Character, directory where files will be extracted

@@ -5,18 +5,18 @@
 #' Can return either absolute URLs or relative sheet identifiers.
 #'
 #' @param commune `character` vector. The INSEE code(s) of the commune(s).
-#' @param millesime `character`. The version or millesime of the dataset.
-#' Must be on of `get_data_millesimes("pci")`. Default is `"latest"`.
+#' @param millesime `character`. The cadastral version of the dataset.
+#'    Must be on of `get_data_millesimes("pci")`. Default is `"latest"`.
 #' @param format `character`. The format of the data.
-#' Must be `"edigeo"` or `"dxf"`. Default is `"edigeo"`.
+#'    Must be `"edigeo"` or `"dxf"`. Default is `"edigeo"`.
 #' @param absolute `logical`. Default is `"TRUE"`.
-#' If `TRUE` (default), returned links are converted to absolute URLs.
-#' If `FALSE`, relative paths are preserved.
+#'    If `TRUE` (default), returned links are converted to absolute URLs.
+#'    If `FALSE`, relative paths are preserved.
 #'
 #' @return A character vector of URLs (or relative sheet identifiers if `absolute = FALSE`).
 #'
 #' @details
-#' PCI (Plan Cadastral Informatise) sheets are organized per commune. This function
+#' PCI (computerized cadastral plan) sheets are organized per commune. This function
 #' constructs the URLs to access all available sheets for the requested communes.
 #' When `absolute = FALSE`, the returned sheet identifiers are cleaned by removing
 #' the format prefix (`edigeo` or `dxf`) and the `.tar.bz2` file extension.
@@ -26,18 +26,18 @@
 #' @examples
 #' \dontrun{
 #' # Retrieve absolute URLs for a single commune
-#' get_pci_feuilles("72187")
+#' get_pci_feuille("72187")
 #'
 #' # Retrieve relative sheet names
-#' get_pci_feuilles("72187", absolute = FALSE)
+#' get_pci_feuille("72187", absolute = FALSE)
 #' }
 #'
 #' @export
 #'
-get_pci_feuilles <- function(commune,
-                             millesime = "latest",
-                             format = "edigeo",
-                             absolute = TRUE) {
+get_pci_feuille <- function(commune,
+                            millesime = "latest",
+                            format = "edigeo",
+                            absolute = TRUE) {
 
   # Build URLs and detect available sheets
   links <- detect_urls(
@@ -58,16 +58,16 @@ get_pci_feuilles <- function(commune,
 
 #' Generate PCI sheet URLs from Commune or Sheet codes
 #'
-#' This internal function generates PCI (Plan Cadastral Informatise) URLs
+#' This internal function generates PCI (computerized cadastral plan) URLs
 #' given a vector of commune codes (5-character) or individual sheet codes
 #' (12-character).
 #'
 #' @param x `character`. Vector of codes to retrieve URLs for.
-#' Each element must be either a 5-character commune code or a 12-character sheet code.
-#' @param millesime `character`. The version or millesime of the dataset.
-#' Must be on of `get_data_millesimes("pci")`. Default is `"latest"`.
+#'    Each element must be either a 5-character commune code or a 12-character sheet code.
+#' @param millesime `character`. The cadastral version of the dataset.
+#'    Must be on of `get_data_millesimes("pci")`. Default is `"latest"`.
 #' @param format `character`. The format of the data.
-#' Must be `"edigeo"` or `"dxf"`. Default is `"edigeo"`.
+#'    Must be `"edigeo"` or `"dxf"`. Default is `"edigeo"`.
 #'
 #' @return A character vector of full URLs pointing to the requested PCI sheets.
 #'
@@ -91,7 +91,6 @@ get_pci_feuilles <- function(commune,
 #' }
 #'
 #' @keywords internal
-#'
 get_pci_urls <- function(x,
                          millesime = "latest",
                          format = "edigeo") {
@@ -102,7 +101,7 @@ get_pci_urls <- function(x,
   base  <- get_base_data_url("pci")
   scale <- "feuilles"
 
-  # Vérifier tous les codes avant de lapply
+  # Check all codes before applying
   invalid <- x[!nchar(x) %in% c(5, 12)]
   if (length(invalid) > 0) {
     stop("Invalid code(s): ", paste(invalid, collapse = ", "),
@@ -111,19 +110,23 @@ get_pci_urls <- function(x,
 
   urls <- lapply(x, function(code) {
     if (nchar(code) == 5) {
-      # Commune
-      insee_check(code)
+      commune <- as.character(code)
+      valid <- check_insee(commune, verbose = TRUE)
+      if (!all(valid)) {
+        stop("Some INSEE codes are invalid or correspond to mother communes.")
+      }
+
       message("")
       detect_urls(construct_data_url(site = "pci",
                                      code,
                                      millesime = millesime,
                                      format = format), absolute = TRUE)
     } else {
-      # Feuille
+      # sheet
       commune <- substr(code, 1, 5)
-      feuille <- sprintf("%s-%s.tar.bz2", format, code)
+      sheet <- sprintf("%s-%s.tar.bz2", format, code)
       file.path(base, millesime, format, scale,
-                construct_commune(commune), feuille)
+                construct_commune(commune), sheet)
     }
   })
 
@@ -134,17 +137,17 @@ get_pci_urls <- function(x,
 #' Download and read PCI raw datasets from server
 #'
 #' This function downloads PCI data for given commune or sheet codes, extracts
-#' the files, and reads them into R as `sf` objects (for Edigeo) or another
+#' the files, and reads them into R as `sf` objects (for EDIGEO) or another
 #' suitable format (for DXF).
 #'
 #' @param x `character`. Vector of codes to retrieve URLs for.
-#' Each element must be either a 5-character commune code or a 12-character sheet code.
-#' @param millesime `character`. The version or millesime of the dataset.
-#' Must be on of `get_data_millesimes("pci")`. Default is `"latest"`.
+#'    Each element must be either a 5-character commune code or a 12-character sheet code.
+#' @param millesime `character`. The cadastral version of the dataset.
+#'    Must be on of `get_data_millesimes("pci")`. Default is `"latest"`.
 #' @param format `character`. The format of the data.
-#' Must be `"edigeo"` or `"dxf"`. Default is `"edigeo"`.
+#'    Must be `"edigeo"` or `"dxf"`. Default is `"edigeo"`.
 #' @param extract_dir `character` or `NULL`. Directory where files will be downloaded and extracted.
-#' If `NULL`, a temporary directory is used.
+#'    If `NULL`, a temporary directory is used.
 #' @param verbose `logical`. If `TRUE`, prints progress messages during download and extraction.
 #'
 #' @return An `sf` object or an `sf` objects list depending query. Returns `NULL` if downloads fail.
@@ -152,29 +155,28 @@ get_pci_urls <- function(x,
 #' @details
 #' - Downloads all relevant archives for the provided codes.
 #' - Extracts files in `extract_dir`.
-#' - Reads Edigeo or DXF files.
+#' - Reads EDIGEO or DXF files.
 #'
 #' @seealso [get_data_millesimes()]
 #'
 #' @examples
 #' \dontrun{
 #' # Download all sheets for a commune
-#' pci_data <- get_pci_raw("72187")
+#' pci_data <- get_pci("72187")
 #'
 #' # Download a specific sheet
-#' pci_data <- get_pci_raw("72181000AB01")
+#' pci_data <- get_pci("72181000AB01")
 #'
 #' # Multiple communes and sheets
-#' pci_data <- get_pci_raw(c("72187", "72181000AB01"))
+#' pci_data <- get_pci(c("72187", "72181000AB01"))
 #' }
 #'
 #' @export
-#'
-get_pci_raw <- function(x,
-                        millesime = "latest",
-                        format = "edigeo",
-                        extract_dir = NULL,
-                        verbose = TRUE) {
+get_pci <- function(x,
+                    millesime = "latest",
+                    format = "edigeo",
+                    extract_dir = NULL,
+                    verbose = TRUE) {
 
   millesime <- match.arg(millesime, get_data_millesimes("pci"))
   format    <- match.arg(format, c("edigeo", "dxf"))

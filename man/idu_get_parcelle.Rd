@@ -4,32 +4,44 @@
 \alias{idu_get_parcelle}
 \title{Retrieve parcel data for given IDUs}
 \usage{
-idu_get_parcelle(idu, with_lieudit = TRUE, with_cog = TRUE, ...)
+idu_get_parcelle(
+  idu,
+  with_feuille = TRUE,
+  with_lieudit = TRUE,
+  with_cog = TRUE,
+  ...
+)
 }
 \arguments{
 \item{idu}{A \code{character} vector of valid IDU codes.}
 
-\item{with_lieudit}{\code{logical} (default: \code{TRUE}). Whether to retrieve and merge
-lieu-dit names associated with the parcels.}
+\item{with_feuille}{\code{logical} (default: \code{TRUE}).
+Whether to retrieve and merge sheet id associated with the parcels.}
 
-\item{with_cog}{\code{logical} (default: \code{TRUE}). Whether to retrieve and merge
-administrative names (region, department, commune) associated with the parcels.}
+\item{with_lieudit}{\code{logical} (default: \code{TRUE}).
+Whether to retrieve and merge place names associated with the parcels.}
+
+\item{with_cog}{\code{logical} (default: \code{TRUE}).
+Whether to retrieve and merge administrative names
+(region, department, commune) associated with the parcels.}
 
 \item{...}{Additional arguments passed to \code{\link[=idu_get_cog]{idu_get_cog()}}.}
 }
 \value{
 An \code{sf} object containing parcel geometries, the IDU code, and optionally
-associated lieu-dit names and administrative names.
+associated place names and administrative names.
 }
 \description{
 This function takes one or more valid IDU codes, retrieves parcel data from
-Etalab, and optionally enriches the parcels with their associated lieu-dit
+Etalab, and optionally enriches the parcels with their associated place
 names and administrative names. The function returns an \code{sf} object containing
 the parcels and requested attributes.
 }
 \details{
 \itemize{
 \item All IDU codes are validated before any data is retrieved.
+\item If \code{with_feuille = TRUE}, the function performs a spatial join with the
+Etalab "lieux-dits" dataset and merges the names into the parcel data.
 \item If \code{with_lieudit = TRUE}, the function performs a spatial join with the
 Etalab "lieux-dits" dataset and merges the names into the parcel data.
 \item If \code{with_cog = TRUE}, the function retrieves region, department, and commune

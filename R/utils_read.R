@@ -127,149 +127,82 @@ read_edigeo <- function(edigeo_dir) {
 }
 
 # Etalab section ----
-#' Read a GeoJSON file (optionally gzipped) and extract a clean name
+#' Read and combine a single GeoJSON layer from files or URLs
 #'
-#' Reads a GeoJSON file from a local path, automatically decompressing gzipped files if needed,
-#' and returns a list containing a simplified layer name and the spatial data as an `sf` object.
+#' Reads one or more GeoJSON datasets corresponding to a single layer
+#' from local files or remote URLs, and combines them into a single `sf` object.
+#' gzipped GeoJSON files (`.json.gz`) are supported directly and do not
+#' require explicit decompression.
 #'
-#' @param f `character`. Path to the GeoJSON or gzipped GeoJSON file.
+#' @param sources `character`. A vector of local file paths or URLs pointing
+#'   to GeoJSON or gzipped GeoJSON files for a single layer.
 #'
-#' @return A `list` with components:
-#'   \item{name}{Simplified name extracted from the file name.}
-#'   \item{data}{An `sf` object with the spatial data.}
-#'
-#' @importFrom sf st_read
-#' @importFrom R.utils gunzip
-#'
-#' @keywords internal
-#'
-read_geojson_file <- function(f) {
-  name <- basename(f)
-  name <- sub("\\.gz$", "", name, ignore.case = TRUE)
-  name <- sub("\\.(geojson|json)$", "", name, ignore.case = TRUE)
-  name <- sub(".*-", "", name)
-
-  if (grepl("\\.gz$", f, ignore.case = TRUE)) {
-    tmp <- tempfile(fileext = ".geojson")
-    R.utils::gunzip(f, destname = tmp, remove = FALSE, overwrite = TRUE)
-    f <- tmp
-  }
-
-  data <- sf::st_read(f, quiet = TRUE)
-  list(name = name, data = data)
-}
-
-#' Read a GeoJSON dataset from a URL and extract a clean name
-#'
-#' Reads a GeoJSON dataset directly from a URL and returns a list containing a simplified
-#' layer name and the spatial data as an `sf` object.
-#'
-#' @param u `character`. URL pointing to a GeoJSON file.
-#'
-#' @return A `list` with components:
-#'   \item{name}{Simplified name extracted from the URL.}
-#'   \item{data}{An `sf` object with the spatial data.}
-#'
-#' @importFrom sf st_read
-#'
-#' @keywords internal
-#'
-read_geojson_url <- function(u) {
-  name <- basename(u)
-  name <- sub("\\.gz$", "", name, ignore.case = TRUE)
-  name <- sub("\\.(geojson|json)$", "", name, ignore.case = TRUE)
-  name <- sub(".*-", "", name)
-
-  data <- sf::st_read(u, quiet = TRUE)
-  list(name = name, data = data)
-}
-
-#' Aggregate multiple sf objects by layer name
-#'
-#' Combines multiple `sf` objects corresponding to the same layer, ensuring that all
-#' objects have consistent column structure. Returns either a single `sf` object if
-#' only one layer exists, or a named list of `sf` objects for multiple layers.
-#'
-#' @param sf_list A `list` of `sf` objects to aggregate.
-#' @param names_list A `character` vector of names corresponding to each `sf` object.
-#'
-#' @return Either a single `sf` object (if only one unique layer) or a named `list` of `sf` objects.
-#'
-#' @keywords internal
-#'
-aggregate_sf_by_layer <- function(sf_list, names_list) {
-  unique_layers <- unique(names_list)
-  aggregated <- lapply(unique_layers, function(layer_name) {
-    idx <- which(names_list == layer_name)
-    if (length(idx) == 1) {
-      sf_list[[idx]]
-    } else {
-      # Harmoniser colonnes
-      all_cols <- unique(unlist(lapply(sf_list[idx], names)))
-      sf_list_fixed <- lapply(sf_list[idx], function(x) {
-        missing <- setdiff(all_cols, names(x))
-        for (col in missing) x[[col]] <- NA
-        x[all_cols]
-      })
-      do.call(rbind, sf_list_fixed)
-    }
-  })
-  names(aggregated) <- unique_layers
-  if (length(aggregated) == 1) aggregated[[1]] else aggregated
-}
-
-#' Read and aggregate GeoJSON data from files or URLs
-#'
-#' This function reads one or more GeoJSON or JSON sources (optionally compressed
-#' with `.gz`) from either local files or URLs. Files/sources are grouped and
-#' aggregated by their base name (after removing extensions and the prefix
-#' before the last `-`). If multiple sources share the same base name, they are
-#' merged into a single `sf` object using `rbind`.
-#'
-#' @param sources A character vector of file paths or URLs to GeoJSON/JSON files.
-#' @param type Character. Either `"file"` or `"url"`. Determines how the sources
-#'   are read. `"file"` uses `read_geojson_file()`, `"url"` uses `read_geojson_url()`.
-#'
-#' @return Either a single `sf` object if only one unique layer is found, or a
-#'   named list of `sf` objects for multiple layers. Names correspond to the
-#'   extracted base names from the sources.
+#' @return A single `sf` object containing all features from the provided sources.
+#'   If multiple files are provided for the same layer, they are combined using
+#'   row binding (`rbind`). Columns are assumed to be consistent across files.
 #'
 #' @details
-#' File/URL names are processed as follows:
+#' Layer names are extracted from file names or URLs using the following rules:
 #' 1. Remove the `.gz` extension if present.
 #' 2. Remove the `.geojson` or `.json` extension.
-#' 3. Keep only the part after the last dash (`-`).
+#' 3. Keep only the substring after the last dash character.
 #'
-#' For files, gzipped sources are decompressed into a temporary location before reading.
+#' When local files are provided, duplicated sources corresponding to both
+#' `.json` and `.json.gz` versions of the same dataset are automatically
+#' filtered so that each dataset is read only once.
+#'
+#' Aggregation is simplified: since all files belong to the same layer, they
+#' are simply combined using `rbind`.
+#'
+#' @seealso [sf::st_read()]
 #'
 #' @examples
 #' \dontrun{
-#' # Read all GeoJSON files from a directory
-#' dir_files <- list.files("path/to/geojson_dir", full.names = TRUE)
-#' data_list <- read_geojson(dir_files, type = "file")
+#' # Read all GeoJSON files for a single layer from a directory
+#' files <- list.files("path/to/geojson", full.names = TRUE)
+#' parcels <- read_geojson(files)
 #'
-#' # Read GeoJSON data from URLs
-#' urls <- c("https://example.com/layer1.geojson",
-#'           "https://example.com/layer2.geojson")
-#' data_list <- read_geojson(urls, type = "url")
-#'
-#' # Access a specific aggregated layer
-#' my_layer <- data_list[["numvoie"]]
+#' # Read a single layer from multiple URLs
+#' urls <- c(
+#'   "https://example.org/data/parcelles.geojson",
+#'   "https://example.org/data/parcelles-2.geojson"
+#' )
+#' parcels <- read_geojson(urls)
 #' }
 #'
 #' @keywords internal
-#'
-read_geojson <- function(sources, type = c("file", "url")) {
-  type <- match.arg(type)
-  readers <- switch(type,
-                    file = read_geojson_file,
-                    url  = read_geojson_url)
+read_geojson <- function(sources) {
 
-  # Lecture
-  sf_data <- lapply(sources, readers)
-  sf_list <- lapply(sf_data, `[[`, "data")
-  names_list <- sapply(sf_data, `[[`, "name")
+  # Identify URLs
+  is_url <- grepl("^https?://", sources)
 
-  # Agrégation par couche
-  aggregate_sf_by_layer(sf_list, names_list)
+  # For local files, remove duplicated .json / .json.gz
+  if (any(!is_url)) {
+    files <- sources[!is_url]
+    base <- sub("\\.gz$", "", files)
+    files <- files[!duplicated(base)]
+    sources[!is_url] <- files
+  }
+
+  # Unified reader for files and URLs
+  reader <- function(x) {
+    # Extract a simplified layer name (not used in aggregation here)
+    name <- basename(x)
+    name <- sub("\\.gz$", "", name, ignore.case = TRUE)
+    name <- sub("\\.(geojson|json)$", "", name, ignore.case = TRUE)
+    name <- sub(".*-", "", name)
+
+    data <- sf::st_read(x, quiet = TRUE)
+    data
+  }
+
+  # Read all sources
+  sf_list <- lapply(sources, reader)
+
+  # Combine into a single sf object
+  if (length(sf_list) == 1) {
+    sf_list[[1]]
+  } else {
+    do.call(rbind, sf_list)
+  }
 }

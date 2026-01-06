@@ -2,7 +2,7 @@
 % Please edit documentation in R/utils_download.R
 \name{extract_file}
 \alias{extract_file}
-\title{Extract a file (gz or archive)}
+\title{Extract a file (GZ file or archive)}
 \usage{
 extract_file(filepath, extract_dir)
 }
@@ -15,6 +15,6 @@ extract_file(filepath, extract_dir)
 Path to extraction directory
 }
 \description{
-Extract a file (gz or archive)
+Extract a file (GZ file or archive)
 }
 \keyword{internal}

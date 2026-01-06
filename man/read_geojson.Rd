@@ -2,52 +2,56 @@
 % Please edit documentation in R/utils_read.R
 \name{read_geojson}
 \alias{read_geojson}
-\title{Read and aggregate GeoJSON data from files or URLs}
+\title{Read and combine a single GeoJSON layer from files or URLs}
 \usage{
-read_geojson(sources, type = c("file", "url"))
+read_geojson(sources)
 }
 \arguments{
-\item{sources}{A character vector of file paths or URLs to GeoJSON/JSON files.}
-
-\item{type}{Character. Either \code{"file"} or \code{"url"}. Determines how the sources
-are read. \code{"file"} uses \code{read_geojson_file()}, \code{"url"} uses \code{read_geojson_url()}.}
+\item{sources}{\code{character}. A vector of local file paths or URLs pointing
+to GeoJSON or gzipped GeoJSON files for a single layer.}
 }
 \value{
-Either a single \code{sf} object if only one unique layer is found, or a
-named list of \code{sf} objects for multiple layers. Names correspond to the
-extracted base names from the sources.
+A single \code{sf} object containing all features from the provided sources.
+If multiple files are provided for the same layer, they are combined using
+row binding (\code{rbind}). Columns are assumed to be consistent across files.
 }
 \description{
-This function reads one or more GeoJSON or JSON sources (optionally compressed
-with \code{.gz}) from either local files or URLs. Files/sources are grouped and
-aggregated by their base name (after removing extensions and the prefix
-before the last \code{-}). If multiple sources share the same base name, they are
-merged into a single \code{sf} object using \code{rbind}.
+Reads one or more GeoJSON datasets corresponding to a single layer
+from local files or remote URLs, and combines them into a single \code{sf} object.
+gzipped GeoJSON files (\code{.json.gz}) are supported directly and do not
+require explicit decompression.
 }
 \details{
-File/URL names are processed as follows:
+Layer names are extracted from file names or URLs using the following rules:
 \enumerate{
 \item Remove the \code{.gz} extension if present.
 \item Remove the \code{.geojson} or \code{.json} extension.
-\item Keep only the part after the last dash (\code{-}).
+\item Keep only the substring after the last dash character.
 }
 
-For files, gzipped sources are decompressed into a temporary location before reading.
+When local files are provided, duplicated sources corresponding to both
+\code{.json} and \code{.json.gz} versions of the same dataset are automatically
+filtered so that each dataset is read only once.
+
+Aggregation is simplified: since all files belong to the same layer, they
+are simply combined using \code{rbind}.
 }
 \examples{
 \dontrun{
-# Read all GeoJSON files from a directory
-dir_files <- list.files("path/to/geojson_dir", full.names = TRUE)
-data_list <- read_geojson(dir_files, type = "file")
+# Read all GeoJSON files for a single layer from a directory
+files <- list.files("path/to/geojson", full.names = TRUE)
+parcels <- read_geojson(files)
 
-# Read GeoJSON data from URLs
-urls <- c("https://example.com/layer1.geojson",
-          "https://example.com/layer2.geojson")
-data_list <- read_geojson(urls, type = "url")
-
-# Access a specific aggregated layer
-my_layer <- data_list[["numvoie"]]
+# Read a single layer from multiple URLs
+urls <- c(
+  "https://example.org/data/parcelles.geojson",
+  "https://example.org/data/parcelles-2.geojson"
+)
+parcels <- read_geojson(urls)
 }
 
+}
+\seealso{
+\code{\link[sf:st_read]{sf::st_read()}}
 }
 \keyword{internal}

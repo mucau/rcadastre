@@ -2,12 +2,12 @@
 % Please edit documentation in R/utils_download.R
 \name{extract_gz}
 \alias{extract_gz}
-\title{Extract a .gz file}
+\title{Extract a GZ file}
 \usage{
 extract_gz(src, dest)
 }
 \arguments{
-\item{src}{Character, path to the .gz file}
+\item{src}{Character, path to the GZ file}
 
 \item{dest}{Character, path to write the decompressed file}
 }
@@ -15,6 +15,6 @@ extract_gz(src, dest)
 Path to the decompressed file
 }
 \description{
-Extract a .gz file
+Extract a GZ file
 }
 \keyword{internal}
