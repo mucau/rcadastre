@@ -79,7 +79,7 @@ For a quickly use, you can run directly `get_etalab()` to get `sf` objects from 
 If you want to access the initial (more complete) raw data, you can use:
 - `get_pci()`: download PCI data (in DXF or EDIGEO format);
 - `get_etalab()`: download PCI Etalab raw datasets (in compressed GeoJSON format) 
-by asking raw layer (use `get_etalab_layernames("raw")`)
+by asking raw layer (use an `get_etalab_layernames("raw")` as `layer` argument).
 
 You have also some utility functions to manage IDU for cadastral parcelles.
 
