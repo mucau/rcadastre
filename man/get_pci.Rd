@@ -5,7 +5,7 @@
 \title{Download and read PCI raw datasets from server}
 \usage{
 get_pci(
-  x,
+  id,
   millesime = "latest",
   format = "edigeo",
   extract_dir = NULL,
@@ -13,8 +13,8 @@ get_pci(
 )
 }
 \arguments{
-\item{x}{\code{character}. Vector of codes to retrieve URLs for.
-Each element must be either a 5-character commune code or a 12-character sheet code.}
+\item{id}{\code{character} or \code{numeric} vector.
+The INSEE code(s) of the cacadastral sheet(s) or commune(s).}
 
 \item{millesime}{\code{character}. The cadastral version of the dataset.
 Must be on of \code{get_data_millesimes("pci")}. Default is \code{"latest"}.}

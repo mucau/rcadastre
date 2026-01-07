@@ -27,7 +27,7 @@ If \code{absolute = TRUE}, URLs are normalized relative to the input base.
 }
 \examples{
 \dontrun{
-links <- detect_urls(construct_data_url("etalab", "72187"))
+links <- detect_urls(get_data_url("72187", "etalab"))
 print(links)
 }
 

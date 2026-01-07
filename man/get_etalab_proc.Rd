@@ -4,11 +4,11 @@
 \alias{get_etalab_proc}
 \title{Download and read Etalab processed datasets from "bundle" app}
 \usage{
-get_etalab_proc(commune, layer, verbose = TRUE)
+get_etalab_proc(id, layer, verbose = TRUE)
 }
 \arguments{
-\item{commune}{\code{character} or \code{numeric} vector.
-The INSEE code(s) of the commune(s).}
+\item{id}{\code{character} or \code{numeric} vector.
+The INSEE code(s) of the commune(s) or department(s).}
 
 \item{layer}{\code{character}. Datasets raw name to download.
 Must be dataset names returned by \code{\link[=get_etalab_layernames]{get_etalab_layernames()}}.}

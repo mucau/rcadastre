@@ -32,10 +32,10 @@
 #'
 get_etalab_layernames <- function(type = c("raw", "proc")) {
   mapping <- list(
-    raw  = c("batiment", "borne", "commune", "label", "lieudit", "numvoie",
-             "parcelle", "ptcanv", "section", "subdfisc", "subdsect",
-             "symblim", "tline", "tpoint", "tronfluv", "tronroute", "tsurf",
-             "zoncommuni"),
+    raw  = c("batiment", "borne", "boulon", "charge", "commune", "croix",
+             "label", "lieudit", "numvoie", "parcelle", "ptcanv", "section",
+             "subdfisc", "subdsect", "symblim", "tline", "tpoint", "tronfluv",
+             "tronroute", "tsurf", "voiep", "zoncommuni"),
     proc = c("batiments", "communes", "feuilles", "lieux_dits",
              "parcelles", "prefixes_sections", "sections", "subdivisions_fiscales")
   )
@@ -51,8 +51,8 @@ get_etalab_layernames <- function(type = c("raw", "proc")) {
 #' The results are returned as an `sf` object. If multiple files are retrieved
 #' (e.g. several communes), they are combined into a single `sf` object.
 #'
-#' @param commune `character` or `numeric` vector.
-#'    The INSEE code(s) of the commune(s).
+#' @param id `character` or `numeric` vector.
+#'    The INSEE code(s) of the commune(s) or department(s).
 #' @param layer `character`. Datasets raw name to download.
 #'    Must be dataset names returned by [get_etalab_layernames()].
 #' @param verbose `logical`. If `TRUE`, prints progress messages.
@@ -72,13 +72,14 @@ get_etalab_layernames <- function(type = c("raw", "proc")) {
 #' }
 #'
 #' @keywords internal
-get_etalab_proc <- function(commune, layer, verbose = TRUE) {
+get_etalab_proc <- function(id, layer, verbose = TRUE) {
 
-  # Commune check
-  commune <- as.character(commune)
-  valid <- check_insee(commune, verbose = FALSE)
+  # Id check
+  id <- as.character(id)
+  valid <- check_insee(id, verbose = FALSE)
   if (!all(valid)) {
-    stop("Some INSEE codes are invalid or correspond to mother communes.")
+    stop("Some INSEE codes are invalid or correspond to mother communes.",
+         call. = FALSE)
   }
 
   # Layer check
@@ -93,13 +94,13 @@ get_etalab_proc <- function(commune, layer, verbose = TRUE) {
   }
 
   # Construct URL
-  scale <- get_insee_scale(commune)
+  scale <- get_insee_scale(id)
   url <- sprintf(
     "https://cadastre.data.gouv.fr/bundler/cadastre-etalab/%s/%s/geojson/%s",
-    scale, commune, layer
+    scale, id, layer
   )
 
-  if (verbose) message("Downloading ", layer, " for ", commune)
+  if (verbose) message("Downloading ", layer, " for ", id)
 
   # Download and read GeoJSON
   tryCatch(
@@ -118,8 +119,8 @@ get_etalab_proc <- function(commune, layer, verbose = TRUE) {
 #' The results are returned as an `sf` object. If multiple files are retrieved
 #' (e.g. several communes), they are combined into a single `sf` object.
 #'
-#' @param commune `character` or `numeric` vector.
-#'    The INSEE code(s) of the commune(s).
+#' @param id `character` or `numeric` vector.
+#'    The INSEE code(s) of the commune(s) or department(s).
 #' @param layer `character`. Datasets raw name to download.
 #'    Must be dataset names returned by [get_etalab_layernames()].
 #' @param millesime `character`. Dataset version for raw layers.
@@ -147,17 +148,18 @@ get_etalab_proc <- function(commune, layer, verbose = TRUE) {
 #' }
 #'
 #' @keywords internal
-get_etalab_raw <- function(commune,
+get_etalab_raw <- function(id,
                            layer,
                            millesime = "latest",
                            extract_dir = NULL,
                            verbose = TRUE) {
 
   # Commune check
-  commune <- as.character(commune)
-  valid <- check_insee(commune, verbose = FALSE)
+  id <- as.character(id)
+  valid <- check_insee(id, verbose = FALSE)
   if (!all(valid)) {
-    stop("Some INSEE codes are invalid or correspond to mother communes.")
+    stop("Some INSEE codes are invalid or correspond to mother communes.",
+         call. = FALSE)
   }
 
   # Layer check
@@ -171,7 +173,7 @@ get_etalab_raw <- function(commune,
     )
   }
 
-  base <- construct_data_url("etalab", commune, millesime)
+  base <- get_data_url(id, "etalab", millesime)
   raw_base <- file.path(base, "raw")
 
   links <- detect_urls(raw_base, absolute = TRUE)
@@ -179,8 +181,8 @@ get_etalab_raw <- function(commune,
   url <- links[grepl(pattern, links)]
 
   if (!length(url)) {
-    if (verbose) message("No data found for ", layer)
-    return(NULL)
+    if (verbose) warning(paste0("No data found for ", layer), call. = FALSE)
+    return(invisible(NULL))
   }
 
   if (is.null(extract_dir))
@@ -195,7 +197,7 @@ get_etalab_raw <- function(commune,
   )
 
   if (all(vapply(res, is.null, logical(1)))) {
-    if (verbose) message("All downloads failed for ", layer)
+    if (verbose) warning(paste0("All downloads failed for ", layer), call. = FALSE)
     return(NULL)
   }
 
@@ -213,8 +215,8 @@ get_etalab_raw <- function(commune,
 #' This function automatically selects the appropriate download method
 #' based on whether the requested layer is raw or processed.
 #'
-#' @param commune `character` or `numeric` vector.
-#'    The INSEE code(s) of the commune(s).
+#' @param id `character` or `numeric` vector.
+#'    The INSEE code(s) of the commune(s) or department(s).
 #' @param layer `character`. Datasets raw name to download.
 #'    Must be dataset names returned by [get_etalab_layernames()].
 #' @param millesime `character`. Dataset version for raw layers.
@@ -236,7 +238,7 @@ get_etalab_raw <- function(commune,
 #' }
 #'
 #' @export
-get_etalab <- function(commune,
+get_etalab <- function(id,
                        layer,
                        millesime = "latest",
                        extract_dir = NULL,
@@ -258,9 +260,9 @@ get_etalab <- function(commune,
   }
 
   if (layer_type == "proc") {
-    get_etalab_proc(commune, layer, verbose = verbose)
+    get_etalab_proc(id, layer, verbose = verbose)
   } else {
-    get_etalab_raw(commune, layer, millesime = millesime,
+    get_etalab_raw(id, layer, millesime = millesime,
                    extract_dir = extract_dir, verbose = verbose)
   }
 }

@@ -5,7 +5,7 @@
 \title{Download and read Etalab raw datasets from server}
 \usage{
 get_etalab_raw(
-  commune,
+  id,
   layer,
   millesime = "latest",
   extract_dir = NULL,
@@ -13,8 +13,8 @@ get_etalab_raw(
 )
 }
 \arguments{
-\item{commune}{\code{character} or \code{numeric} vector.
-The INSEE code(s) of the commune(s).}
+\item{id}{\code{character} or \code{numeric} vector.
+The INSEE code(s) of the commune(s) or department(s).}
 
 \item{layer}{\code{character}. Datasets raw name to download.
 Must be dataset names returned by \code{\link[=get_etalab_layernames]{get_etalab_layernames()}}.}

@@ -1,45 +1,33 @@
-test_that("get_pci() works offline with mocked download and read functions using cache", {
-  # Create a temporary cache
+# MOCKED TEST ----
+test_that("get_pci() works offline with mocked download and read functions", {
   cache <- file.path(tempdir(), "frcadastre")
   dir.create(cache, recursive = TRUE, showWarnings = FALSE)
   on.exit(unlink(cache, recursive = TRUE, force = TRUE), add = TRUE)
 
-  # Fake URLs to simulate downloads
   fake_urls <- c(
     "https://fake/edigeo-721870000A01.tar.bz2",
     "https://fake/edigeo-721870000C05.tar.bz2"
   )
 
-  # Copy real extdata DXF files into temp cache
   fake_extract_path <- file.path(cache, "extdata")
   dir.create(fake_extract_path, recursive = TRUE, showWarnings = FALSE)
 
-  file.copy(
-    system.file("extdata/1870000A02.DXF", package = "frcadastre"),
-    fake_extract_path,
-    overwrite = TRUE
-  )
-  file.copy(
-    system.file("extdata/1870000C05.DXF", package = "frcadastre"),
-    fake_extract_path,
-    overwrite = TRUE
-  )
-
   # Mock functions
   with_mocked_bindings(
-    get_pci_urls = function(x, millesime, format) fake_urls,
+    get_data_millesimes = function(site) "latest",
+    detect_urls = function(urls, absolute = TRUE) fake_urls,
+    get_data_url = function(codes, site) paste0("https://fake/", codes, ".tar.bz2"),
     download_archives = function(urls, destfiles, extract_dir, use_subdirs, verbose) {
-      list(fake_extract_path)  # Return temp path, not committed files
+      list(fake_extract_path)
     },
     read_dxf = function(path) {
-      # Return a simple sf object for each DXF
       sf::st_sf(
         idu = basename(path),
         geometry = sf::st_sfc(sf::st_point(c(1,1)))
       )
     },
     read_edigeo = function(path) {
-      # Return a list of sf objects
+      # Mocked read_edigeo accepts any path
       list(
         sf::st_sf(
           idu = "fake_edigeo",
@@ -48,38 +36,44 @@ test_that("get_pci() works offline with mocked download and read functions using
       )
     },
     {
-      # Test DXF format
-      pci_commune <- get_pci("72187", format = "dxf", extract_dir = seq_cache, verbose = FALSE)
-      expect_s3_class(pci_commune, "sf")
-      expect_true("idu" %in% names(pci_commune))
+      # Test DXF
+      pci_dxf <- get_pci("72187", format = "dxf", extract_dir = cache, verbose = FALSE)
+      expect_s3_class(pci_dxf, "sf")
+      expect_true("idu" %in% names(pci_dxf))
 
-      # Test EDIGEO format
-      pci_sheet <- get_pci("72181000AB01", format = "edigeo", extract_dir = seq_cache, verbose = FALSE)
-      expect_true(is.list(pci_sheet))
-      expect_true(all(sapply(pci_sheet, inherits, "sf")))
+      # Test EDIGEO
+      pci_edigeo <- get_pci("72181000AB01", format = "edigeo", extract_dir = cache, verbose = FALSE)
+      expect_true(is.list(pci_edigeo))
+      expect_true(all(sapply(pci_edigeo, inherits, "sf")))
     }
   )
 })
 
-test_that("get_pci_urls() works offline with mocked detect_urls using cache", {
-  # Temporary cache
-  cache <- file.path(tempdir(), "frcadastre")
-  dir.create(cache, recursive = TRUE, showWarnings = FALSE)
-  on.exit(unlink(cache, recursive = TRUE, force = TRUE), add = TRUE)
+# ONLINE TEST ----
+test_that("get_pci() works online for a real IDU for EDIGEO", {
+  skip_on_cran()
+  skip_on_ci()
+  skip_if_offline()
 
-  fake_links <- c(
-    "edigeo-721870000A01.tar.bz2",
-    "edigeo-721870000B02.tar.bz2"
-  )
+  # Attempt to download EDIGEO data
+  pci_data <- get_pci("721870000A01", format = "edigeo", verbose = FALSE)
 
-  with_mocked_bindings(
-    detect_urls = function(url, absolute = TRUE) file.path("https://fake", fake_links),
-    get_data_millesimes = function(site) "latest",
-    {
-      urls <- get_pci_urls("72187", millesime = "latest", format = "edigeo")
-      expect_true(all(grepl("^https://fake/", urls)))
-      expect_true(all(grepl("\\.tar\\.bz2$", urls)))
-      expect_equal(basename(urls), fake_links)
-    }
-  )
+  # Check that result is a list of sf objects
+  expect_type(pci_data, "list")
+  expect_true(all(sapply(pci_data, inherits, "sf")))
+
+  # Check that at least one sf object has features
+  expect_true(any(sapply(pci_data, function(x) nrow(x) > 0)))
+})
+
+test_that("get_pci() works online for a real IDU for DXF", {
+  skip_on_cran()
+  skip_on_ci()
+  skip_if_offline()
+
+  # Attempt to download EDIGEO data
+  pci_data <- get_pci("721870000A01", format = "dxf", verbose = FALSE)
+
+  expect_s3_class(pci_data, "sf")
+  expect_true(nrow(pci_data) > 0)
 })

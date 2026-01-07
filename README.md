@@ -90,13 +90,13 @@ You have also some utility functions to manage IDU for cadastral parcelles.
 install_github("mucau/frcadastre")
 
 # To get a commune, just ask with his INSEE code
-commune <- get_etalab(72187, data="communes")
+commune <- get_etalab(72187, layer="communes")
 
 # Continue with parcels ...
-parcels <- get_etalab(72187, data="parcelles")
+parcels <- get_etalab(72187, layer="parcelles")
 
 # And some raw data ...
-borne <- get_etalab_raw(72187, data="borne")
+borne <- get_etalab(72187, layer="borne")
 ```
 
 ### Problems and Issues

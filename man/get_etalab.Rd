@@ -4,17 +4,11 @@
 \alias{get_etalab}
 \title{Download Etalab layer (raw or processed) for one or multiple communes}
 \usage{
-get_etalab(
-  commune,
-  layer,
-  millesime = "latest",
-  extract_dir = NULL,
-  verbose = TRUE
-)
+get_etalab(id, layer, millesime = "latest", extract_dir = NULL, verbose = TRUE)
 }
 \arguments{
-\item{commune}{\code{character} or \code{numeric} vector.
-The INSEE code(s) of the commune(s).}
+\item{id}{\code{character} or \code{numeric} vector.
+The INSEE code(s) of the commune(s) or department(s).}
 
 \item{layer}{\code{character}. Datasets raw name to download.
 Must be dataset names returned by \code{\link[=get_etalab_layernames]{get_etalab_layernames()}}.}

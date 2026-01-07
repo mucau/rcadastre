@@ -10,7 +10,8 @@ get_insee_scale(x)
 \item{x}{\code{character} or \code{numeric}. Vector of INSEE codes.}
 }
 \value{
-Character vector of length \code{length(x)} with values "communes" or "departements".
+Character vector of length \code{length(x)} with values "communes",
+"departements" or "feuilles".
 }
 \description{
 Returns administrative scale for each INSEE code.
@@ -19,6 +20,7 @@ Returns administrative scale for each INSEE code.
 \dontrun{
 get_insee_scale(72187)        # "communes"
 get_insee_scale(c(72, 72187)) # c("departements", "communes")
+get_insee_scale(c(72, 72187, "721870000A01")) # c("departements", "communes", "feuilles")
 }
 
 }

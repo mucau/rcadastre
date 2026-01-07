@@ -42,7 +42,7 @@ test_that("returns NULL if read_geojson fails", {
 
 test_that("prints message when verbose = TRUE", {
   with_mocked_bindings(
-    check_insee = function(commune, verbose = TRUE) rep(TRUE, length(commune)),
+    check_insee = function(id, verbose = TRUE) rep(TRUE, length(id)),
     get_insee_scale = function(x) rep("communes", length(x)),
     get_etalab_layernames = function(type) list(proc = c("parcelles", "sections")),
     read_geojson = function(url) sf::st_sf(id = integer(0), geometry = sf::st_sfc()),
@@ -57,7 +57,7 @@ test_that("prints message when verbose = TRUE", {
 
 test_that("accepts numeric INSEE codes", {
   with_mocked_bindings(
-    check_insee = function(commune, verbose = TRUE) rep(TRUE, length(commune)),
+    check_insee = function(id, verbose = TRUE) rep(TRUE, length(id)),
     get_insee_scale = function(x) rep("communes", length(x)),
     get_etalab_layernames = function(type) list(proc = "parcelles"),
     read_geojson = function(url) sf::st_sf(id = integer(0), geometry = sf::st_sfc()),

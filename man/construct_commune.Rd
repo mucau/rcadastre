@@ -4,17 +4,18 @@
 \alias{construct_commune}
 \title{Construct a commune path string}
 \usage{
-construct_commune(commune)
+construct_commune(id)
 }
 \arguments{
-\item{commune}{\code{character} vector. Validated INSEE code(s) of the commune(s).}
+\item{id}{\code{character} vector. Validated INSEE code(s) of the commune(s).}
 }
 \value{
 A \code{character} vector combining department and commune codes separated by a slash.
 }
 \description{
-Constructs a path string for a given commune code by adding the department
-code (first two characters, or three for 97x) as a prefix joined with a slash.
+Constructs a path string for a given commune (or sheet) code by adding
+the department code (first two characters, or three for 97x)
+as a prefix joined with a slash.
 }
 \examples{
 \dontrun{

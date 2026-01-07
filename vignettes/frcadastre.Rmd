@@ -45,8 +45,8 @@ the available layername data from **PCI Etalab** bundle, run
 `get_etalab_layernames("proc")`. The `get_etalab()` function returns
 `sf` objects.
 
-The `get_etalab()` function works with an `id` argument (INSEE code) for
-department or city, and the `data` layername you want to get.
+The `get_etalab()` function works with an `idu` argument (INSEE code) for city, 
+and the `layer` dataset name you want to get.
 
 ```{r get_etalab, eval = FALSE}
 library(frcadastre)
@@ -58,8 +58,8 @@ get_etalab_layernames("proc")
 
 
 # Download dataset from Etalab bundle
-communes  <- get_etalab(id = "72", data = "communes") # Sarthe department for example
-parcelles <- get_etalab(id = "72187", data = "parcelles") # 'Marigne-Laille' for example
+communes  <- get_etalab(commune = "72", layer = "communes") # Sarthe department for example
+parcelles <- get_etalab(commune = "72187", layer = "parcelles") # 'Marigne-Laille' for example
 
 tm_shape(communes) +
   tm_polygons(border.col = "red", alpha = 0.5) +
@@ -68,12 +68,12 @@ tm_shape(communes) +
 
 ```
 
-## Etalab data
+## Etalab raw data
 
 More datasets are available by downloading data from this server:
 <https://cadastre.data.gouv.fr/data/>.
 
-The `get_etalab_data()` function allows access to **PCI Etalab** raw
+The `get_etalab()` function allows also access to **PCI Etalab** raw
 data from the previous server. Data are produced by version (millesime).
 
 To know from **PCI Etalab** data server :
@@ -81,10 +81,10 @@ To know from **PCI Etalab** data server :
 -   available cadastral version, run `get_data_millesimes("etalab")` (for quick
     use, `"latest"` is better)
 
--   available data, run `get_etalab_layernames()`.
+-   available data, run `get_etalab_layernames("raw")`.
 
-The `get_etalab()` asks an `commune` argument (INSEE code) for city, the
-`data` layername you want to get, and the `millesime` required.
+The `get_etalab()` asks an `id` argument (INSEE code) for city or departement, 
+the `layer` dataset name you want to get, and the `millesime` required.
 
 ```{r get_etalab_data, eval = FALSE}
 library(frcadastre)

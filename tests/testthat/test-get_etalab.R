@@ -6,8 +6,8 @@ test_that("get_etalab works offline with mocked dependencies - single layer", {
 
   with_mocked_bindings(
     `get_etalab_layernames` = function(type) list(proc = "proc_layer", raw = "raw_layer"),
-    `get_etalab_proc`       = function(commune, layer, verbose = TRUE) fake_proc,
-    `get_etalab_raw`        = function(commune, layer, millesime = "latest", extract_dir = NULL, verbose = TRUE) fake_raw,
+    `get_etalab_proc`       = function(id, layer, verbose = TRUE) fake_proc,
+    `get_etalab_raw`        = function(id, layer, millesime = "latest", extract_dir = NULL, verbose = TRUE) fake_raw,
     {
       # Processed layer
       res1 <- get_etalab("72187", "proc_layer", verbose = FALSE)

@@ -74,7 +74,7 @@ read_edigeo <- function(edigeo_dir) {
     layers <- st_layers(thf_file)$name
 
     for (layer_name in layers) {
-      message("Reading layer '", layer_name, "' from ", basename(thf_file))
+      # message("Reading layer '", layer_name, "' from ", basename(thf_file))
       layer_sf <- st_read(thf_file, layer = layer_name, quiet = TRUE)
 
       if (!layer_name %in% names(layers_aggregated)) {

@@ -43,10 +43,11 @@ get_base_data_url <- function(site) {
 
 #' Construct a commune path string
 #'
-#' Constructs a path string for a given commune code by adding the department
-#' code (first two characters, or three for 97x) as a prefix joined with a slash.
+#' Constructs a path string for a given commune (or sheet) code by adding
+#' the department code (first two characters, or three for 97x)
+#' as a prefix joined with a slash.
 #'
-#' @param commune `character` vector. Validated INSEE code(s) of the commune(s).
+#' @param id `character` vector. Validated INSEE code(s) of the commune(s).
 #'
 #' @return A `character` vector combining department and commune codes separated by a slash.
 #'
@@ -59,88 +60,137 @@ get_base_data_url <- function(site) {
 #' }
 #'
 #' @keywords internal
-construct_commune <- function(commune) {
-  # Assumes commune codes are already validated
-  dep <- substr(commune, 1, ifelse(substr(commune, 1, 2) == "97", 3, 2))
+construct_commune <- function(id) {
+  # Assumes id codes are already validated
+  dep <- substr(id, 1, ifelse(substr(id, 1, 2) == "97", 3, 2))
+  commune <- substr(id, 1, 5)
   file.path(dep, commune)
 }
 
-#' Construct the Full Data URL for cadastre.data.gouv
+#' Construct the full data URL for cadastre.data.gouv
 #'
-#' This function builds the complete URL to access cadastral data for a
-#' given cadastre.data.gouv site, commune, and cadastral version.
-#' The function handles default formats and scales for each site.
+#' This function builds the complete URL(s) to access cadastral data hosted on
+#' \url{https://cadastre.data.gouv.fr}, for a given site and one or more INSEE
+#' identifiers. It automatically detects the appropriate cadastral scale
+#' (communes, feuilles, or departements) from the provided identifiers and
+#' applies site-specific constraints.
 #'
-#' @param site `character`. The cadastre site to use.
-#'    Must be one of `"pci"` or `"etalab"`.
-#' @param commune `character` vector. The INSEE code(s) of the commune(s).
+#' @param id `character` vector. One or more INSEE identifiers.
+#'   Can be commune codes, cadastral sheet identifiers, or department codes,
+#'   depending on the selected site.
+#'
+#' @param site `character`. The cadastre.data.gouv site to use.
+#'   Must be one of `"pci"` or `"etalab"`.
+#'
 #' @param millesime `character`. The version of the dataset.
-#'    Must be on of `get_data_millesimes("pci")`. Default is `"latest"`.
-#' @param format `character`. Optional. The format of the data.
-#'    For "pci", must be `"edigeo"` or `"dxf"`.
-#'    For "etalab", the default is "geojson".
+#'   Must be one of `get_data_millesimes(site)`.
+#'   Default is `"latest"`.
 #'
-#' @return A character vector of full URLs for the requested site, commune(s), and cadastral version.
+#' @param format `character`. Optional data format.
+#'   \itemize{
+#'     \item For `"pci"`, must be `"edigeo"` or `"dxf"` (default: `"edigeo"`).
+#'     \item For `"etalab"`, the format is always `"geojson"` and this argument
+#'     is ignored.
+#'   }
+#'
+#' @return A `character` vector of fully qualified URLs corresponding to the
+#'   requested identifiers, site, scale, and dataset version.
 #'
 #' @details
-#' The function validates the site and commune codes.
-#' Default scales and formats are:
+#' The function constructs download URLs based on the selected
+#' cadastre.data.gouv pipeline and the cadastral scale inferred from the
+#' provided INSEE identifiers.
 #'
-#' - "pci": scale = "feuilles", format = "edigeo" or "dxf"
-#' - "etalab": scale = "communes", format = "geojson"
+#' Supported pipelines and scales are:
+#' \itemize{
+#'   \item \strong{PCI}: commune or cadastral sheet (feuille) scale
+#'   \item \strong{Etalab}: commune or department scale
+#' }
 #'
-#' The returned URLs are constructed as:
-#' \code{base_url / millesime / format / scale / commune}
+#' INSEE identifiers are validated, the appropriate scale is inferred,
+#' site-specific constraints are applied, and the final URL(s) are
+#' constructed accordingly.
 #'
-#' @seealso [get_data_millesimes()]
+#' @seealso [get_data_millesimes()], [get_insee_scale()]
 #'
 #' @examples
 #' \dontrun{
-#' # PCI data for commune "72187"
-#' construct_data_url("pci", 72187)
-#' # Returns: "https://cadastre.data.gouv.fr/data/dgfip-pci-vecteur/latest/edigeo/feuilles/72/72187"
+#' # PCI cadastral sheets for a commune
+#' get_data_url(id = "72187", site = "pci")
+#' # -> https://cadastre.data.gouv.fr/data/dgfip-pci-vecteur/latest/edigeo/feuilles/72/72187
 #'
-#' # Etalab data for commune "72187"
-#' construct_data_url("etalab", "72187")
-#' # Returns: "https://cadastre.data.gouv.fr/data/etalab-cadastre/latest/geojson/communes/72/72187"
+#' # Etalab cadastral data at commune scale
+#' get_data_url(id = "72187", site = "etalab")
+#' # -> https://cadastre.data.gouv.fr/data/etalab-cadastre/latest/geojson/communes/72/72187
+#'
+#' # Etalab cadastral data at department scale
+#' get_data_url(id = "72", site = "etalab")
 #' }
 #'
 #' @keywords internal
-construct_data_url <- function(site,
-                               commune,
-                               millesime = "latest",
-                               format = NULL) {
+get_data_url <- function(id,
+                         site,
+                         millesime = "latest",
+                         format = NULL) {
 
-  # Validate site
+  # Site check
   site <- match.arg(site, c("pci", "etalab"))
 
-  # Validate commune codes (once)
-  valid <- check_insee(commune, verbose = FALSE)
+  # ID check
+  valid <- check_insee(id, verbose = FALSE)
   if (!all(valid)) {
-    stop("Some INSEE codes are invalid or correspond to mother communes.")
+    stop("Some INSEE codes are invalid or correspond to mother communes.",
+         call. = FALSE)
   }
 
-  # Determine cadastral version
-  millesime <- match.arg(millesime, get_data_millesimes("pci"))
+  # Data version
+  millesime <- match.arg(millesime, get_data_millesimes(site))
 
-  # Determine scale and format
+  # Scale detection
+  scale <- get_insee_scale(id)
+
+  # Forbidden combinations
+  if (site == "pci" && any(scale == "departements")) {
+    stop(
+      paste0(
+        "frcadastre doesn't handle the departmental scale for PCI.\n",
+        "Try: https://cadastre.data.gouv.fr/data/dgfip-pci-vecteur/latest/",
+        "edigeo/departements/"
+      ),
+      call. = FALSE
+    )
+  }
+  if (site == "etalab" && any(scale == "feuilles")) {
+    stop("Sheet scale not availabe for Etalab", call. = FALSE)
+  }
+
+  # For PCI, replace "communes" by "feuilles"
   if (site == "pci") {
-    scale <- "feuilles"
-    if (is.null(format)) format <- "edigeo"
-    format <- match.arg(format, c("edigeo", "dxf"))
-  } else if (site == "etalab") {
-    scale <- "communes"
-    format <- "geojson"
+    scale[scale == "communes"] <- "feuilles"
   }
+
+  # Format
+  format <- switch(
+    site,
+    pci = {
+      if (is.null(format)) format <- "edigeo"
+      match.arg(format, c("edigeo", "dxf"))
+    },
+    etalab = "geojson"
+  )
+
+  # Data path
+  data_path <- ifelse(
+    scale == "departements",
+    id,
+    construct_commune(id)
+  )
 
   # Base URL
   base <- get_base_data_url(site)
 
-  # Commune path
-  commune_paths <- construct_commune(commune)
-
-  # Construct full URLs
-  file.path(base, millesime, format, scale, commune_paths)
+  # Final URL
+  file.path(base, millesime, format, scale, data_path)
 }
 
 ### Milesime section ----
@@ -163,7 +213,7 @@ construct_data_url <- function(site,
 #'
 #' @examples
 #' \dontrun{
-#' links <- detect_urls(construct_data_url("etalab", "72187"))
+#' links <- detect_urls(get_data_url("72187", "etalab"))
 #' print(links)
 #' }
 #'
@@ -285,7 +335,8 @@ check_insee <- function(x, verbose = TRUE) {
 
   # Generic validity check
   is_valid <- (nchar(x) == 5 & x %in% communes) |
-    (nchar(x) %in% c(2,3) & x %in% departments)
+    (nchar(x) %in% c(2,3) & x %in% departments) |
+    (nchar(x) == 12 & substr(x, 1, 5) %in% communes)
 
   # Mother communes are considered invalid
   is_valid[is_mother] <- FALSE
@@ -305,12 +356,14 @@ check_insee <- function(x, verbose = TRUE) {
 #'
 #' @param x `character` or `numeric`. Vector of INSEE codes.
 #'
-#' @return Character vector of length `length(x)` with values "communes" or "departements".
+#' @return Character vector of length `length(x)` with values "communes",
+#' "departements" or "feuilles".
 #'
 #' @examples
 #' \dontrun{
 #' get_insee_scale(72187)        # "communes"
 #' get_insee_scale(c(72, 72187)) # c("departements", "communes")
+#' get_insee_scale(c(72, 72187, "721870000A01")) # c("departements", "communes", "feuilles")
 #' }
 #'
 #' @keywords internal
@@ -322,6 +375,7 @@ get_insee_scale <- function(x) {
   scales <- character(length(x))
   scales[nchar(x) == 5 & x %in% communes] <- "communes"
   scales[nchar(x) %in% c(2,3) & x %in% departments] <- "departements"
+  scales[nchar(x) == 12 & substr(x, 1, 5) %in% communes] <- "feuilles"
 
   if (any(scales == "")) {
     stop("Cannot determine scale for code(s): ", paste(x[scales==""], collapse=", "))

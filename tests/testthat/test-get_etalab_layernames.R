@@ -2,7 +2,7 @@ test_that("get_etalab_layernames returns correct names for raw", {
   res <- get_etalab_layernames("raw")
   expect_type(res, "list")
   expect_true("batiment" %in% res$raw)
-  expect_equal(length(res$raw), 18) # 18 defined layers
+  expect_equal(length(res$raw), 22)
 })
 
 test_that("get_etalab_layernames returns correct names for proc", {
